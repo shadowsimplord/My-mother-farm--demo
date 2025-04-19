@@ -5,6 +5,56 @@ import * as THREE from 'three';
 import Terrain from '../game/map/Terrain';
 import FarmGrid from '../game/map/FarmGrid';
 import { SoilState } from '../game/map/GridSystem';
+import DevTools from '../components/DevTools';
+
+// Component cho AxesHelper - hiển thị trục tọa độ 3D (X, Y, Z)
+const CoordinateAxes = ({ size = 10, visible = false }) => {
+  const axesRef = useRef<THREE.AxesHelper>(null);
+  
+  // Lắng nghe sự kiện toggle-axes để hiển thị/ẩn axes helper
+  useEffect(() => {
+    const handleToggleAxes = (e: any) => {
+      if (axesRef.current) {
+        axesRef.current.visible = e.detail.visible;
+      }
+    };
+    
+    window.addEventListener('toggle-axes', handleToggleAxes as EventListener);
+    
+    return () => {
+      window.removeEventListener('toggle-axes', handleToggleAxes as EventListener);
+    };
+  }, []);
+
+  return <axesHelper ref={axesRef} args={[size]} visible={visible} />;
+};
+
+// Component hiển thị điểm gốc tọa độ (0, 0, 0)
+const OriginPoint = ({ size = 0.2, visible = false }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  // Lắng nghe sự kiện toggle-axes để hiển thị/ẩn điểm gốc tọa độ
+  useEffect(() => {
+    const handleToggleAxes = (e: any) => {
+      if (meshRef.current) {
+        meshRef.current.visible = e.detail.visible;
+      }
+    };
+    
+    window.addEventListener('toggle-axes', handleToggleAxes as EventListener);
+    
+    return () => {
+      window.removeEventListener('toggle-axes', handleToggleAxes as EventListener);
+    };
+  }, []);
+
+  return (
+    <mesh ref={meshRef} visible={visible} position={[0, 0, 0]}>
+      <sphereGeometry args={[size, 16, 16]} />
+      <meshBasicMaterial color="#ffffff" />
+    </mesh>
+  );
+};
 
 // Hàm xử lý click vào ô đất
 const handleTileClick = (x: number, z: number, setSelectedTile: React.Dispatch<React.SetStateAction<{x: number, z: number} | null>>) => {
@@ -14,7 +64,7 @@ const handleTileClick = (x: number, z: number, setSelectedTile: React.Dispatch<R
 
 // Farm scene component that contains the 3D world
 export const FarmSceneContent: React.FC = () => {
-  const { camera } = useThree();
+  const { camera, raycaster, scene, mouse } = useThree();
   const terrainRef = useRef<THREE.Mesh>(null);
   const [selectedTile, setSelectedTile] = useState<{x: number, z: number} | null>(null);
   const [currentTool, setCurrentTool] = useState<'plow' | 'seed' | 'water' | 'harvest'>('plow');
@@ -25,10 +75,44 @@ export const FarmSceneContent: React.FC = () => {
     camera.lookAt(0, 0, 0);
   }, [camera]);
 
-  // Animation loop
+  // Animation loop - Cập nhật vị trí camera và gửi thông tin đến DevTools
   useFrame((_state, _delta) => {
-    // Animation code nếu cần thiết
+    // Gửi thông tin vị trí camera cho DevTools
+    window.dispatchEvent(new CustomEvent('camera-update', { 
+      detail: { 
+        camera: { 
+          x: camera.position.x,
+          y: camera.position.y,
+          z: camera.position.z
+        } 
+      } 
+    }));
   });
+
+  // Xử lý click vào scene
+  const handleSceneClick = (event: THREE.Event) => {
+    // Ngăn bubbling để không bị double handling
+    event.stopPropagation();
+    
+    // Tính toán điểm va chạm với địa hình
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    
+    if (intersects.length > 0) {
+      const point = intersects[0].point;
+      
+      // Gửi thông tin điểm click cho DevTools
+      window.dispatchEvent(new CustomEvent('scene-click', { 
+        detail: { 
+          point: { 
+            x: point.x,
+            y: point.y,
+            z: point.z 
+          } 
+        } 
+      }));
+    }
+  };
 
   return (
     <>
@@ -45,8 +129,12 @@ export const FarmSceneContent: React.FC = () => {
       <Sky sunPosition={[100, 10, 100]} />
       <Environment preset="sunset" />
       
-      {/* Terrain */}
-      <Terrain ref={terrainRef} />
+      {/* Coordinate Axes và Origin Point */}
+      <CoordinateAxes size={50} visible={false} />
+      <OriginPoint size={0.3} visible={false} />
+      
+      {/* Terrain - với event listener cho click */}
+      <Terrain ref={terrainRef} onClick={handleSceneClick} />
       
       {/* Farm Grid */}
       <FarmGrid 
@@ -69,6 +157,9 @@ export const FarmSceneContent: React.FC = () => {
 
 // Main component that sets up the Canvas
 const FarmScene: React.FC = () => {
+  // Trạng thái hiển thị DevTools
+  const [devToolsVisible, setDevToolsVisible] = useState(false);
+  
   return (
     <>
       <Canvas
@@ -78,6 +169,9 @@ const FarmScene: React.FC = () => {
       >
         <FarmSceneContent />
       </Canvas>
+      
+      {/* Developer Tools - đã di chuyển ra bên ngoài Canvas */}
+      <DevTools visible={devToolsVisible} setVisible={setDevToolsVisible} />
       
       {/* UI Overlay - chỉ tập trung vào trồng trọt */}
       <div className="farm-ui">
