@@ -1,0 +1,45 @@
+[
+  {
+    "id": "caphe1",
+    "type": "coffee-tree",
+    "daysPlanted": 8,
+    "position": [-8, -2, 8]
+  },
+  {
+    "id": "caphe1",
+    "type": "coffee-tree",
+    "daysPlanted": 8,
+    "position": [-6, -2, 8]
+  },
+  {
+    "id": "caphe1",
+    "type": "coffee-tree",
+    "daysPlanted": 8,
+    "position": [-4, -2, 8]
+  },
+  {
+    "id": "caphe1",
+    "type": "coffee-tree",
+    "daysPlanted": 8,
+    "position": [-8, -2, 6]
+  },
+  {
+    "id": "caphe1",
+    "type": "coffee-tree",
+    "daysPlanted": 8,
+    "position": [-6, -2, 6]
+  },
+  {
+    "id": "caphe1",
+    "type": "coffee-tree",
+    "daysPlanted": 8,
+    "position": [-4, -2, 6]
+  },
+
+  {
+    "id": "cherry1",
+    "type": "cherry",
+    "daysPlanted": 9,
+    "position": [7, -2, -6]
+  }
+]

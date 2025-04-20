@@ -4,7 +4,11 @@ import { OrbitControls, Sky, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import Terrain from '../game/map/Terrain';
 import { Trees } from '../game/objects/Tree';
+import House from '../game/objects/House';
+import { CoffeeTrees } from '../game/objects/FruitTrees/CoffeeTree';
+import { CherryTrees } from '../game/objects/FruitTrees/CherryTree';
 import { treeSpawner, TreeData, TreeSpawnerConfig } from '../game/systems/TreeSpawner';
+import fruitTreesData from '../game/systems/FruitTreesdata.json';
 
 import DevTools from '../components/DevTools';
 
@@ -163,8 +167,19 @@ export const FarmSceneContent: React.FC = () => {
       {/* Terrain - với event listener cho click and heightmap support */}
       <Terrain ref={terrainRef} onClick={handleSceneClick} useHeightmap={useHeightmap} />
       
+      {/* House */}
+      <House position={[-2.62, -1.97, -1.05]} rotation={[0, Math.PI / 2, 0]} scale={1.5} />
+      
       {/* Trees */}
       {trees.length > 0 && <Trees trees={trees} />}
+      
+      {/* Fruit Trees */}
+      {fruitTreesData && (
+        <>
+          <CoffeeTrees trees={fruitTreesData.filter(tree => tree.type === 'coffee-tree')} />
+          <CherryTrees trees={fruitTreesData.filter(tree => tree.type === 'cherry')} />
+        </>
+      )}
       
       {/* Controls */}
       <OrbitControls 

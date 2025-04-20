@@ -86,7 +86,7 @@ const Tree: React.FC<TreeProps> = ({
     <mesh
       ref={meshRef}
       // độ cao của cây sẽ được điều chỉnh dựa trên vị trí y của terrain
-      position={[position[0], position[1] + 0.58, position[2]]}
+      position={[position[0], position[1] + 0.59, position[2]]}
       rotation={rotation}
       scale={[scale, scale, scale]}
       castShadow
