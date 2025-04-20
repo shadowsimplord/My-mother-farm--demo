@@ -1,22 +1,25 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react';
 import * as THREE from 'three';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useLoader } from '@react-three/fiber';
 import { createNoise2D } from 'simplex-noise';
 
 // Các tham số địa hình
 const GRID_SIZE = 50; // Kích thước lưới
 const GRID_RESOLUTION = 100; // Số lượng phân đoạn
-const HEIGHT_MULTIPLIER = 4.0; // Hệ số nhân chiều cao (tăng lên để địa hình cao hơn)
-const NOISE_SCALE = 0.15; // Tỉ lệ noise (tăng lên cho địa hình nhấp nhô nhiều hơn)
-const TERRAIN_THICKNESS = 0.55; // Độ dày của địa hình
+const HEIGHT_MULTIPLIER = 2; // Hệ số nhân chiều cao (tăng lên để địa hình cao hơn)
+const NOISE_SCALE = 0.12; // Tỉ lệ noise (tăng lên cho địa hình nhấp nhô nhiều hơn)2
 
 // Tham số điều chỉnh địa hình
 const NOISE_OCTAVES = 4; // Số lớp noise chồng lên nhau
 const NOISE_PERSISTENCE = 0.6; // Độ bền của các octave (0-1)
 const NOISE_LACUNARITY = 2.0; // Tần số giữa các octave
-const FLATTEN_STRENGTH = 1.5; // Độ mạnh của hiệu ứng làm phẳng ở trung tâm (cao hơn = phẳng hơn)
-const FLATTEN_RADIUS = 0.25; // Bán kính vùng phẳng ở trung tâm (0-1)
 const HILLS_STRENGTH = [1.0, 0.6, 0.3, 0.15]; // Cường độ của mỗi lớp đồi (octave)
+
+// Tham số làm mịn địa hình
+const SMOOTHING_PASSES = 3; // Số lần áp dụng thuật toán làm mịn
+const SMOOTHING_FACTOR = 0.77; // Cường độ làm mịn (0-1)
+const EDGE_ROUNDNESS = 0.85; // Mức độ bo tròn cạnh (0-1)
+const TRANSITION_SMOOTHNESS = 1.5; // Mức độ mượt của chuyển tiếp giữa các cao độ
 
 // Đường dẫn đến heightmap
 const HEIGHTMAP_PATH = '/images/Heightmap.png';
@@ -34,29 +37,6 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
   
   // Load heightmap texture
   const heightmapTexture = useLoader(THREE.TextureLoader, HEIGHTMAP_PATH);
-  
-  // Hàm lấy độ cao từ heightmap texture
-  const getHeightFromTexture = (texture: THREE.Texture, u: number, v: number): number => {
-    // Tạo canvas để đọc dữ liệu từ texture
-    if (!texture.image) return 0;
-    
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) return 0;
-    
-    canvas.width = texture.image.width;
-    canvas.height = texture.image.height;
-    context.drawImage(texture.image, 0, 0);
-    
-    // Lấy điểm ảnh tại vị trí (u,v) trong texture
-    const pixelX = Math.floor(u * (canvas.width - 1));
-    const pixelY = Math.floor(v * (canvas.height - 1));
-    
-    // Đọc giá trị grayscale (sử dụng màu đỏ làm dữ liệu độ cao)
-    const data = context.getImageData(pixelX, pixelY, 1, 1).data;
-    // Lấy giá trị từ 0-255 và chuẩn hóa về khoảng -1 đến 1
-    return (data[0] / 255) * 2 - 1;
-  };
   
   // Cache heightmap data
   const [heightmapData, setHeightmapData] = useState<number[][]>([]);
@@ -90,9 +70,68 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
         }
       }
       
-      setHeightmapData(heightData);
+      // Apply smoothing passes to the heightmap data
+      const smoothedData = smoothHeightmapData(heightData, width, height);
+      setHeightmapData(smoothedData);
     }
   }, [heightmapTexture]);
+  
+  // Smoothing function for heightmap data
+  const smoothHeightmapData = (data: number[][], width: number, height: number): number[][] => {
+    // Create a copy of the data to avoid modifying the original
+    let result = JSON.parse(JSON.stringify(data));
+    
+    // Apply multiple smoothing passes
+    for (let pass = 0; pass < SMOOTHING_PASSES; pass++) {
+      const tempData = JSON.parse(JSON.stringify(result));
+      
+      // Apply smoothing kernel to each point
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          // Get surrounding height values
+          const center = result[y][x];
+          const left = result[y][x - 1];
+          const right = result[y][x + 1];
+          const top = result[y - 1][x];
+          const bottom = result[y + 1][x];
+          
+          // Calculate corner values
+          const topLeft = result[y - 1][x - 1];
+          const topRight = result[y - 1][x + 1];
+          const bottomLeft = result[y + 1][x - 1];
+          const bottomRight = result[y + 1][x + 1];
+          
+          // Weight for corners (diagonal neighbors)
+          const cornerWeight = EDGE_ROUNDNESS * 0.5;
+          
+          // Apply weighted average
+          tempData[y][x] = (
+            center * (1 - SMOOTHING_FACTOR) + 
+            (left + right + top + bottom) * (SMOOTHING_FACTOR / 4) +
+            (topLeft + topRight + bottomLeft + bottomRight) * (cornerWeight / 4)
+          );
+          
+          // Apply additional smoothing to height transitions
+          const heightDifference = Math.max(
+            Math.abs(center - left),
+            Math.abs(center - right),
+            Math.abs(center - top),
+            Math.abs(center - bottom)
+          );
+          
+          // Apply extra smoothing for sharp transitions
+          if (heightDifference > 0.2) {
+            const transitionFactor = Math.min(1.0, heightDifference * TRANSITION_SMOOTHNESS);
+            tempData[y][x] = center * (1 - transitionFactor * 0.4) + tempData[y][x] * (transitionFactor * 0.4);
+          }
+        }
+      }
+      
+      result = tempData;
+    }
+    
+    return result;
+  };
   
   // Hàm nội suy để lấy độ cao từ heightmap data
   const getHeightFromHeightmap = (u: number, v: number): number => {
@@ -102,14 +141,34 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
     const height = heightmapData.length;
     
     // Chuyển đổi u, v (0-1) sang tọa độ mảng
-    const x = Math.min(Math.floor(u * (width - 1)), width - 1);
-    const y = Math.min(Math.floor(v * (height - 1)), height - 1);
+    const x = u * (width - 1);
+    const y = v * (height - 1);
     
-    return heightmapData[y][x];
+    // Get integer coordinates for bilinear interpolation
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const x1 = Math.min(x0 + 1, width - 1);
+    const y1 = Math.min(y0 + 1, height - 1);
+    
+    // Calculate interpolation factors
+    const sx = x - x0;
+    const sy = y - y0;
+    
+    // Bilinear interpolation between corner values
+    const h00 = heightmapData[y0][x0];
+    const h01 = heightmapData[y0][x1];
+    const h10 = heightmapData[y1][x0];
+    const h11 = heightmapData[y1][x1];
+    
+    // Perform bilinear interpolation
+    const h0 = h00 * (1 - sx) + h01 * sx;
+    const h1 = h10 * (1 - sx) + h11 * sx;
+    
+    return h0 * (1 - sy) + h1 * sy;
   };
   
   // Hàm tạo giá trị noise với nhiều octave
-  const getNoiseValue = (x: number, y: number) => {
+  const getNoiseValue = (x: number, y: number): number => {
     let amplitude = 1.0;
     let frequency = 1.0;
     let noiseValue = 0;
@@ -121,7 +180,7 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
       const noiseY = y * frequency * NOISE_SCALE;
       
       // Thêm layer noise với cường độ giảm dần
-      noiseValue += HILLS_STRENGTH[i] * amplitude * noise2D(noiseX, noiseY);
+      noiseValue += HILLS_STRENGTH[i % HILLS_STRENGTH.length] * amplitude * noise2D(noiseX, noiseY);
       
       amplitudeSum += amplitude;
       amplitude *= NOISE_PERSISTENCE;
@@ -132,9 +191,9 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
     return noiseValue / amplitudeSum;
   };
   
-  // Tạo geometry cho địa hình
+  // Tạo geometry cho địa hình - OPTIMIZED: chỉ tạo mặt trên
   const geometry = useMemo(() => {
-    // Bước 1: Tạo heightmap bằng PlaneGeometry
+    // Tạo heightmap bằng PlaneGeometry
     const planeGeometry = new THREE.PlaneGeometry(
       GRID_SIZE, 
       GRID_SIZE,
@@ -146,7 +205,7 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
     const { position } = planeGeometry.attributes;
     const vertex = new THREE.Vector3();
     
-    // Áp dụng heightmap hoặc noise và tạo một heightmap thực tế
+    // Áp dụng chiều cao cho mỗi đỉnh dựa trên heightmap hoặc noise
     for (let i = 0; i < position.count; i++) {
       vertex.fromBufferAttribute(position, i);
       
@@ -167,153 +226,14 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
       
       // Áp dụng độ cao
       vertex.z = elevation * HEIGHT_MULTIPLIER;
-      
-      // Tạo khu vực bằng phẳng ở giữa (cho khu vực trồng trọt)
-      const distanceFromCenter = Math.sqrt(x * x + y * y) / FLATTEN_RADIUS;
-      
-      // Sử dụng hàm mượt để tạo chuyển tiếp mềm mại
-      const flattenFactor = 1.0 - Math.min(1, Math.max(0, 
-        1.0 - Math.pow(Math.max(0, distanceFromCenter - 0.5), FLATTEN_STRENGTH)
-      ));
-      
-      // Làm phẳng khu vực trung tâm
-      vertex.z *= flattenFactor;
-      
-      // Thêm một số gợn nhẹ cho khu vực trung tâm để không quá phẳng
-      if (distanceFromCenter < 0.4) {
-        vertex.z += 0.1 * noise2D(x * 10, y * 10) * (0.4 - distanceFromCenter);
-      }
-      
-      // Cập nhật vị trí
       position.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
     
     // Tính toán normal mới do địa hình đã thay đổi
     planeGeometry.computeVertexNormals();
     
-    // Bước 2: Tạo địa hình 3D có độ dày bằng cách tạo một BufferGeometry mới
-    const terrainGeometry = new THREE.BufferGeometry();
-    
-    // Sao chép thuộc tính position từ planeGeometry
-    const positions = Array.from(planeGeometry.attributes.position.array);
-    const normals = Array.from(planeGeometry.attributes.normal.array);
-    const indices = Array.from(planeGeometry.index ? planeGeometry.index.array : []);
-    
-    // Số lượng đỉnh trong planeGeometry
-    const vertexCount = positions.length / 3;
-    
-    // Mảng mới cho geometry có độ dày
-    const newPositions = [];
-    const newNormals = [];
-    const newIndices = [];
-    const newUvs = [];
-    
-    // Tạo các đỉnh cho mặt trên (sao chép từ planeGeometry)
-    for (let i = 0; i < vertexCount; i++) {
-      newPositions.push(
-        positions[i * 3],     // x
-        positions[i * 3 + 1], // y
-        positions[i * 3 + 2]  // z
-      );
-      
-      newNormals.push(
-        normals[i * 3],     // nx
-        normals[i * 3 + 1], // ny
-        normals[i * 3 + 2]  // nz
-      );
-      
-      // UV coordinates
-      const u = (positions[i * 3] / GRID_SIZE + 0.5);
-      const v = (positions[i * 3 + 1] / GRID_SIZE + 0.5);
-      newUvs.push(u, v);
-    }
-    
-    // Tạo các đỉnh cho mặt dưới (offset theo trục Z)
-    for (let i = 0; i < vertexCount; i++) {
-      newPositions.push(
-        positions[i * 3],     // x
-        positions[i * 3 + 1], // y
-        positions[i * 3 + 2] - TERRAIN_THICKNESS  // z - thickness
-      );
-      
-      newNormals.push(
-        -normals[i * 3],     // -nx (đảo chiều normal)
-        -normals[i * 3 + 1], // -ny
-        -normals[i * 3 + 2]  // -nz
-      );
-      
-      // UV coordinates (giống mặt trên)
-      const u = (positions[i * 3] / GRID_SIZE + 0.5);
-      const v = (positions[i * 3 + 1] / GRID_SIZE + 0.5);
-      newUvs.push(u, v);
-    }
-    
-    // Thêm indices cho mặt trên (sao chép từ planeGeometry)
-    for (let i = 0; i < indices.length; i++) {
-      newIndices.push(indices[i]);
-    }
-    
-    // Thêm indices cho mặt dưới (đảo chiều để đúng winding order)
-    for (let i = 0; i < indices.length; i += 3) {
-      // Thêm tam giác với chiều ngược lại
-      newIndices.push(
-        indices[i] + vertexCount,
-        indices[i + 2] + vertexCount,
-        indices[i + 1] + vertexCount
-      );
-    }
-    
-    // Thêm indices cho các mặt bên (kết nối mặt trên và mặt dưới)
-    // Tìm các cạnh ở viền ngoài của grid
-    const edgeVertices = new Set();
-    const edgePairs = [];
-    
-    // Duyệt qua các tam giác để tìm các cạnh ở viền
-    for (let i = 0; i < indices.length; i += 3) {
-      const a = indices[i];
-      const b = indices[i + 1];
-      const c = indices[i + 2];
-      
-      // Kiểm tra từng cạnh xem có phải là cạnh viền không
-      checkAndAddEdge(a, b);
-      checkAndAddEdge(b, c);
-      checkAndAddEdge(c, a);
-    }
-    
-    function checkAndAddEdge(a, b) {
-      // Chuẩn hóa thứ tự để tránh trùng lặp
-      const edge = a < b ? a + "," + b : b + "," + a;
-      
-      // Nếu đã gặp cạnh này trước đó, nó không phải là cạnh viền
-      if (edgeVertices.has(edge)) {
-        edgeVertices.delete(edge);
-      } else {
-        // Đây là lần đầu gặp cạnh này
-        edgeVertices.add(edge);
-        edgePairs.push([a, b]);
-      }
-    }
-    
-    // Tạo các mặt bên bằng cách kết nối các cạnh viền của mặt trên và mặt dưới
-    for (const [a, b] of edgePairs) {
-      // Mặt bên 1
-      newIndices.push(a, b, a + vertexCount);
-      
-      // Mặt bên 2
-      newIndices.push(b, b + vertexCount, a + vertexCount);
-    }
-    
-    // Tạo BufferGeometry mới với các thuộc tính đã tạo
-    terrainGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
-    terrainGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(newNormals, 3));
-    terrainGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(newUvs, 2));
-    terrainGeometry.setIndex(newIndices);
-    
-    // Tính toán normals
-    terrainGeometry.computeVertexNormals();
-    
-    return terrainGeometry;
-  }, [noise2D, useHeightmap, heightmapData]);
+    return planeGeometry;
+  }, [noise2D, useHeightmap, heightmapData, getHeightFromHeightmap, getNoiseValue]);
   
   // Animation và update terrain
   const materialRef = useRef(null);
@@ -330,10 +250,9 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
     >
       <meshStandardMaterial 
         ref={materialRef}
-        color="#3a7c40" // Màu xanh lá cây cho mặt trên
+        color="#45a74d" // Màu xanh lá cây cho mặt trên
         roughness={0.8}
         metalness={0.2}
-        side={THREE.DoubleSide} // Hiển thị cả hai mặt
       />
     </mesh>
   );

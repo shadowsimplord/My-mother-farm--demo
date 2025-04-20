@@ -3,8 +3,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Sky, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import Terrain from '../game/map/Terrain';
-import FarmGrid from '../game/map/FarmGrid';
-import { SoilState } from '../game/map/GridSystem';
+import { Trees } from '../game/objects/Tree';
+import { treeSpawner, TreeData, TreeSpawnerConfig } from '../game/systems/TreeSpawner';
+
 import DevTools from '../components/DevTools';
 
 // Component cho AxesHelper - hiển thị trục tọa độ 3D (X, Y, Z)
@@ -69,12 +70,37 @@ export const FarmSceneContent: React.FC = () => {
   const [selectedTile, setSelectedTile] = useState<{x: number, z: number} | null>(null);
   const [currentTool, setCurrentTool] = useState<'plow' | 'seed' | 'water' | 'harvest'>('plow');
   const [useHeightmap, setUseHeightmap] = useState<boolean>(true); // State to control heightmap usage
+  const [trees, setTrees] = useState<TreeData[]>([]);
 
   // Set initial camera position
   useEffect(() => {
     camera.position.set(15, 15, 15);
     camera.lookAt(0, 0, 0);
   }, [camera]);
+
+  // Generate trees when terrain is loaded
+  useEffect(() => {
+    if (terrainRef.current) {
+      // Configure the tree spawner
+      const treeConfig: Partial<TreeSpawnerConfig> = {
+        count: 50, // Number of trees to generate
+        minDistance: 3, // Minimum distance between trees
+        exclusionZones: [
+          // Keep the center area clear for farming
+          { center: [0, 0], radius: 10 }
+        ]
+      };
+      
+      treeSpawner.updateConfig(treeConfig);
+      treeSpawner.setTerrainRef(terrainRef);
+      
+      // Generate the trees
+      const generatedTrees = treeSpawner.generateTrees();
+      setTrees(generatedTrees);
+      
+      console.log(`Generated ${generatedTrees.length} trees on the terrain`);
+    }
+  }, [terrainRef.current]);
 
   // Animation loop - Cập nhật vị trí camera và gửi thông tin đến DevTools
   useFrame((_state, _delta) => {
@@ -120,7 +146,7 @@ export const FarmSceneContent: React.FC = () => {
       {/* Lighting */}
       <ambientLight intensity={0.5} />
       <directionalLight 
-        position={[10, 10, 5]} 
+        position={[10, 15, 5]} 
         intensity={1} 
         castShadow 
         shadow-mapSize={[2048, 2048]}
@@ -137,13 +163,8 @@ export const FarmSceneContent: React.FC = () => {
       {/* Terrain - với event listener cho click and heightmap support */}
       <Terrain ref={terrainRef} onClick={handleSceneClick} useHeightmap={useHeightmap} />
       
-      {/* Farm Grid */}
-      <FarmGrid 
-        gridSize={10} 
-        tileSize={1} 
-        position={[0, 0.05, 0]} 
-        onTileClick={(x, z) => handleTileClick(x, z, setSelectedTile)}
-      />
+      {/* Trees */}
+      {trees.length > 0 && <Trees trees={trees} />}
       
       {/* Controls */}
       <OrbitControls 
@@ -157,6 +178,20 @@ export const FarmSceneContent: React.FC = () => {
       <mesh position={[-20, 0, -20]} onClick={() => setUseHeightmap(prev => !prev)}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={useHeightmap ? '#00ff00' : '#ff0000'} />
+      </mesh>
+      
+      {/* Tree generation toggle */}
+      <mesh 
+        position={[-20, 0, -22]} 
+        onClick={() => {
+          if (terrainRef.current) {
+            const newTrees = treeSpawner.generateTrees();
+            setTrees(newTrees);
+          }
+        }}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={'#0000ff'} />
       </mesh>
     </>
   );
