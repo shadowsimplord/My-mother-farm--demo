@@ -68,6 +68,7 @@ export const FarmSceneContent: React.FC = () => {
   const terrainRef = useRef<THREE.Mesh>(null);
   const [selectedTile, setSelectedTile] = useState<{x: number, z: number} | null>(null);
   const [currentTool, setCurrentTool] = useState<'plow' | 'seed' | 'water' | 'harvest'>('plow');
+  const [useHeightmap, setUseHeightmap] = useState<boolean>(true); // State to control heightmap usage
 
   // Set initial camera position
   useEffect(() => {
@@ -133,8 +134,8 @@ export const FarmSceneContent: React.FC = () => {
       <CoordinateAxes size={50} visible={false} />
       <OriginPoint size={0.3} visible={false} />
       
-      {/* Terrain - với event listener cho click */}
-      <Terrain ref={terrainRef} onClick={handleSceneClick} />
+      {/* Terrain - với event listener cho click and heightmap support */}
+      <Terrain ref={terrainRef} onClick={handleSceneClick} useHeightmap={useHeightmap} />
       
       {/* Farm Grid */}
       <FarmGrid 
@@ -151,6 +152,12 @@ export const FarmSceneContent: React.FC = () => {
         enableRotate={true}
         maxPolarAngle={Math.PI / 2.2}
       />
+
+      {/* Toggle for heightmap */}
+      <mesh position={[-20, 0, -20]} onClick={() => setUseHeightmap(prev => !prev)}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={useHeightmap ? '#00ff00' : '#ff0000'} />
+      </mesh>
     </>
   );
 };

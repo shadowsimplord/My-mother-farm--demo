@@ -1,6 +1,6 @@
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useLoader } from '@react-three/fiber';
 import { createNoise2D } from 'simplex-noise';
 
 // Các tham số địa hình
@@ -8,7 +8,7 @@ const GRID_SIZE = 50; // Kích thước lưới
 const GRID_RESOLUTION = 100; // Số lượng phân đoạn
 const HEIGHT_MULTIPLIER = 4.0; // Hệ số nhân chiều cao (tăng lên để địa hình cao hơn)
 const NOISE_SCALE = 0.15; // Tỉ lệ noise (tăng lên cho địa hình nhấp nhô nhiều hơn)
-const TERRAIN_THICKNESS = 1.0; // Độ dày của địa hình
+const TERRAIN_THICKNESS = 0.55; // Độ dày của địa hình
 
 // Tham số điều chỉnh địa hình
 const NOISE_OCTAVES = 4; // Số lớp noise chồng lên nhau
@@ -18,15 +18,95 @@ const FLATTEN_STRENGTH = 1.5; // Độ mạnh của hiệu ứng làm phẳng �
 const FLATTEN_RADIUS = 0.25; // Bán kính vùng phẳng ở trung tâm (0-1)
 const HILLS_STRENGTH = [1.0, 0.6, 0.3, 0.15]; // Cường độ của mỗi lớp đồi (octave)
 
+// Đường dẫn đến heightmap
+const HEIGHTMAP_PATH = '/images/Heightmap.png';
+
 // Interface cho props
 interface TerrainProps {
   onClick?: (event: THREE.Event) => void;
+  useHeightmap?: boolean; // Thêm prop để chọn sử dụng heightmap hay noise
 }
 
 // Component Terrain
-const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick }, ref) => {
+const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeightmap = true }, ref) => {
   // Tạo noise
   const noise2D = useMemo(() => createNoise2D(), []);
+  
+  // Load heightmap texture
+  const heightmapTexture = useLoader(THREE.TextureLoader, HEIGHTMAP_PATH);
+  
+  // Hàm lấy độ cao từ heightmap texture
+  const getHeightFromTexture = (texture: THREE.Texture, u: number, v: number): number => {
+    // Tạo canvas để đọc dữ liệu từ texture
+    if (!texture.image) return 0;
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) return 0;
+    
+    canvas.width = texture.image.width;
+    canvas.height = texture.image.height;
+    context.drawImage(texture.image, 0, 0);
+    
+    // Lấy điểm ảnh tại vị trí (u,v) trong texture
+    const pixelX = Math.floor(u * (canvas.width - 1));
+    const pixelY = Math.floor(v * (canvas.height - 1));
+    
+    // Đọc giá trị grayscale (sử dụng màu đỏ làm dữ liệu độ cao)
+    const data = context.getImageData(pixelX, pixelY, 1, 1).data;
+    // Lấy giá trị từ 0-255 và chuẩn hóa về khoảng -1 đến 1
+    return (data[0] / 255) * 2 - 1;
+  };
+  
+  // Cache heightmap data
+  const [heightmapData, setHeightmapData] = useState<number[][]>([]);
+  
+  // Extract heightmap data once the texture is loaded
+  useEffect(() => {
+    if (heightmapTexture && heightmapTexture.image) {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      
+      const width = heightmapTexture.image.width;
+      const height = heightmapTexture.image.height;
+      canvas.width = width;
+      canvas.height = height;
+      
+      context.drawImage(heightmapTexture.image, 0, 0);
+      
+      const imageData = context.getImageData(0, 0, width, height);
+      const data = imageData.data;
+      
+      const heightData: number[][] = [];
+      
+      // Extract height data from the image
+      for (let y = 0; y < height; y++) {
+        heightData[y] = [];
+        for (let x = 0; x < width; x++) {
+          // Get red channel value (0-255) and normalize to [-1, 1]
+          const index = (y * width + x) * 4;
+          heightData[y][x] = (data[index] / 255) * 2 - 1;
+        }
+      }
+      
+      setHeightmapData(heightData);
+    }
+  }, [heightmapTexture]);
+  
+  // Hàm nội suy để lấy độ cao từ heightmap data
+  const getHeightFromHeightmap = (u: number, v: number): number => {
+    if (heightmapData.length === 0) return 0;
+    
+    const width = heightmapData[0].length;
+    const height = heightmapData.length;
+    
+    // Chuyển đổi u, v (0-1) sang tọa độ mảng
+    const x = Math.min(Math.floor(u * (width - 1)), width - 1);
+    const y = Math.min(Math.floor(v * (height - 1)), height - 1);
+    
+    return heightmapData[y][x];
+  };
   
   // Hàm tạo giá trị noise với nhiều octave
   const getNoiseValue = (x: number, y: number) => {
@@ -62,19 +142,28 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick }, ref) =>
       GRID_RESOLUTION
     );
     
-    // Tạo heightmap sử dụng simplex noise
+    // Tạo heightmap sử dụng heightmap image hoặc noise
     const { position } = planeGeometry.attributes;
     const vertex = new THREE.Vector3();
     
-    // Áp dụng noise và tạo một heightmap thực tế
+    // Áp dụng heightmap hoặc noise và tạo một heightmap thực tế
     for (let i = 0; i < position.count; i++) {
       vertex.fromBufferAttribute(position, i);
       
       const x = vertex.x / GRID_SIZE;
       const y = vertex.y / GRID_SIZE;
       
-      // Lấy giá trị noise kết hợp nhiều octave
-      const elevation = getNoiseValue(x, y);
+      // Chuyển đổi từ khoảng [-0.5, 0.5] sang [0, 1] cho texture sampling
+      const u = x + 0.5;
+      const v = y + 0.5;
+      
+      // Lấy độ cao từ heightmap hoặc noise
+      let elevation;
+      if (useHeightmap && heightmapData.length > 0) {
+        elevation = getHeightFromHeightmap(u, v);
+      } else {
+        elevation = getNoiseValue(x, y);
+      }
       
       // Áp dụng độ cao
       vertex.z = elevation * HEIGHT_MULTIPLIER;
@@ -224,15 +313,10 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick }, ref) =>
     terrainGeometry.computeVertexNormals();
     
     return terrainGeometry;
-  }, [noise2D]);
+  }, [noise2D, useHeightmap, heightmapData]);
   
   // Animation và update terrain
   const materialRef = useRef(null);
-  
-  // Sử dụng useFrame để animation nếu cần
-  useFrame((_state, _delta) => {
-    // Animation code nếu cần thiết
-  });
   
   // Render terrain mesh
   return (
@@ -245,6 +329,7 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick }, ref) =>
       onClick={onClick}
     >
       <meshStandardMaterial 
+        ref={materialRef}
         color="#3a7c40" // Màu xanh lá cây cho mặt trên
         roughness={0.8}
         metalness={0.2}
