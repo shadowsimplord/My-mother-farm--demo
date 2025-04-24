@@ -3,43 +3,57 @@
     "id": "caphe1",
     "type": "coffee-tree",
     "daysPlanted": 8,
-    "position": [-8, -2, 8]
+    "position": [-8, -2, 8],
+    "status": "good"
   },
   {
-    "id": "caphe1",
+    "id": "caphe2",
     "type": "coffee-tree",
     "daysPlanted": 8,
-    "position": [-6, -2, 8]
+    "position": [-6, -2, 8],
+    "status": "bad"
   },
   {
-    "id": "caphe1",
+    "id": "caphe3",
     "type": "coffee-tree",
     "daysPlanted": 8,
-    "position": [-4, -2, 8]
+    "position": [-4, -2, 8],
+    "status": "normal"
   },
   {
-    "id": "caphe1",
+    "id": "caphe4",
     "type": "coffee-tree",
-    "daysPlanted": 8,
-    "position": [-8, -2, 6]
+    "daysPlanted": 100,
+    "position": [-8, -2, 6],
+    "status": "good"
   },
   {
-    "id": "caphe1",
+    "id": "caphe5",
     "type": "coffee-tree",
     "daysPlanted": 8,
-    "position": [-6, -2, 6]
+    "position": [-6, -2, 6],
+    "status": "bad"
   },
   {
-    "id": "caphe1",
+    "id": "caphe6",
     "type": "coffee-tree",
     "daysPlanted": 8,
-    "position": [-4, -2, 6]
+    "position": [-4, -2, 6],
+    "status": "good"
   },
 
   {
     "id": "cherry1",
     "type": "cherry",
     "daysPlanted": 9,
-    "position": [7, -2, -6]
+    "position": [7, -2, -6],
+    "status": "good"
+  },
+  {
+    "id": "cherry2",
+    "type": "cherry",
+    "daysPlanted": 10,
+    "position": [12, -2, 3],
+    "status": "bad"
   }
 ]

@@ -24,6 +24,9 @@ export interface TreeSpawnerConfig {
   // Minimum distance between trees
   minDistance: number;
   
+  // Minimum distance from other objects (house, fruit trees, etc.)
+  minDistanceFromObjects: number;
+  
   // Maximum slope angle for tree placement (in degrees)
   maxSlopeAngle: number;
   
@@ -34,6 +37,12 @@ export interface TreeSpawnerConfig {
   exclusionZones?: Array<{
     center: [number, number]; // X, Z center position
     radius: number;          // Radius of exclusion zone
+  }>;
+
+  // Positions of other objects (house, fruit trees, etc.) to keep distance from
+  objectPositions?: Array<{
+    position: [number, number, number]; // x, y, z
+    radius?: number; // Optional custom radius for this object
   }>;
 }
 
@@ -50,8 +59,10 @@ export const DEFAULT_TREE_CONFIG: TreeSpawnerConfig = {
     birch: 0.1,  // 10% birch trees
   },
   minDistance: 2.5, // Minimum distance between trees
+  minDistanceFromObjects: 3.0, // Minimum distance from other objects
   maxSlopeAngle: 25, // Maximum slope angle in degrees
   cliffEdgeDistance: 2.0, // Minimum distance from cliff edges
+  objectPositions: [],
 };
 
 // Define tree data structure
@@ -77,6 +88,7 @@ export class TreeSpawner {
    */
   public setTerrainRef(ref: React.RefObject<THREE.Mesh>) {
     this.terrainRef = ref;
+    console.log("TreeSpawner: TerrainRef set:", ref.current ? "valid" : "null");
   }
   
   /**
@@ -87,10 +99,23 @@ export class TreeSpawner {
   }
   
   /**
+   * Set positions of other objects to keep distance from
+   */
+  public setObjectPositions(positions: Array<{ position: [number, number, number]; radius?: number }>) {
+    this.config.objectPositions = positions;
+  }
+  
+  /**
    * Generate random positions for trees
    */
   public generateTrees(): TreeData[] {
     this.trees = [];
+    
+    // Kiểm tra xem terrainRef đã được thiết lập hay chưa
+    if (!this.terrainRef || !this.terrainRef.current) {
+      console.warn("TreeSpawner: Cannot generate trees, terrain reference is not available");
+      return this.trees;
+    }
     
     // Attempt to place trees based on the count
     let attempts = 0;
@@ -108,6 +133,9 @@ export class TreeSpawner {
       
       // Check distance from other trees
       if (this.isTooCloseToOtherTrees(x, z)) continue;
+      
+      // Check distance from other objects (house, fruit trees, etc.)
+      if (this.isTooCloseToObjects(x, z)) continue;
       
       // Get terrain height at this position
       const y = this.getTerrainHeightAt(x, z);
@@ -139,7 +167,7 @@ export class TreeSpawner {
       this.trees.push(treeData);
     }
     
-    console.log(`Generated ${this.trees.length} trees after ${attempts} attempts`);
+    console.log(`TreeSpawner: Generated ${this.trees.length} trees after ${attempts} attempts`);
     return this.trees;
   }
   
@@ -170,37 +198,62 @@ export class TreeSpawner {
   }
   
   /**
+   * Check if a position is too close to other objects (house, fruit trees, etc.)
+   */
+  private isTooCloseToObjects(x: number, z: number): boolean {
+    if (!this.config.objectPositions || this.config.objectPositions.length === 0) {
+      return false;
+    }
+    
+    return this.config.objectPositions.some(obj => {
+      const dx = x - obj.position[0];
+      const dz = z - obj.position[2];
+      const distanceSquared = dx * dx + dz * dz;
+      // Use object's custom radius if provided, otherwise use the default minDistanceFromObjects
+      const minDist = obj.radius || this.config.minDistanceFromObjects;
+      return distanceSquared < minDist * minDist;
+    });
+  }
+  
+  /**
    * Get terrain height at a specific world position
    * Uses raycasting to find the exact height
    */
   private getTerrainHeightAt(x: number, z: number): number | null {
     if (!this.terrainRef || !this.terrainRef.current) {
-      console.warn("Terrain reference not available for height sampling");
-      return 0; // Default height if terrain not available
+      console.warn("TreeSpawner: Terrain reference not available for height sampling");
+      return 0; // Default fallback height
     }
     
     // Create a raycaster to find terrain height
     const raycaster = new THREE.Raycaster();
-    // Cast ray from high above terrain straight down
-    raycaster.set(
-      new THREE.Vector3(x, 100, z),
-      new THREE.Vector3(0, -1, 0)
-    );
     
-    // Get terrain mesh - already rotated in scene
+    // Đặt ray origin cao hơn nhiều so với điểm cao nhất có thể của terrain
+    const rayOrigin = new THREE.Vector3(x, 100, z);
+    const rayDirection = new THREE.Vector3(0, -1, 0);
+    rayDirection.normalize();
+    
+    raycaster.set(rayOrigin, rayDirection);
+    
+    // Get terrain mesh - đã được đặt đúng trong scene
     const terrain = this.terrainRef.current;
     
-    // Check for intersection with terrain
-    const intersects = raycaster.intersectObject(terrain);
+    // Đảm bảo terrain được cập nhật matrix
+    terrain.updateMatrixWorld(true);
+    
+    // Kiểm tra giao điểm với terrain - không check descendants để tăng hiệu suất
+    const intersects = raycaster.intersectObject(terrain, false);
     
     if (intersects.length > 0) {
       const point = intersects[0].point;
-      // Return terrain height at this point
-      // Add small offset to prevent trees from being exactly on the surface
-      return point.y + 0.05;
+      
+      // Trả về độ cao terrain tại điểm này
+      // Thêm một offset nhỏ để đảm bảo cây không bị chìm trong đất
+      return point.y;
     }
     
-    return null;
+    console.warn(`TreeSpawner: No intersection found for position (${x}, ${z}), using fallback y=0`);
+    return 0;
   }
   
   /**

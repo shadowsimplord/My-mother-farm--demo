@@ -81,12 +81,17 @@ const Tree: React.FC<TreeProps> = ({
   }
   */
   
+  // Debug vị trí cây
+  useEffect(() => {
+    // Log position for debugging
+    console.log(`Tree positioned at: [${position[0].toFixed(2)}, ${position[1].toFixed(2)}, ${position[2].toFixed(2)}]`);
+  }, [position]);
+
   // Return placeholder geometry if model loading fails or is in progress
   return (
     <mesh
       ref={meshRef}
-      // độ cao của cây sẽ được điều chỉnh dựa trên vị trí y của terrain
-      position={[position[0], position[1] + 0.59, position[2]]}
+      position={position}
       rotation={rotation}
       scale={[scale, scale, scale]}
       castShadow
@@ -94,14 +99,14 @@ const Tree: React.FC<TreeProps> = ({
     >
       {type === 'pine' && (
         <>
-          {/* Trunk */}
-          <mesh position={[0, -0.7, 0]}>
+          {/* Trunk - ĐIỀU CHỈNH: di chuyển phần thân xuống dưới điểm gốc để đảm bảo cây đúng điểm (0,0,0) */}
+          <mesh position={[0, -0.6, 0]}>
             <cylinderGeometry args={[0.2, 0.2, 0.6, 8]} />
             <meshStandardMaterial color="#5D4037" roughness={0.8} />
           </mesh>
           
-          {/* Foliage layers */}
-          <mesh position={[0, 0, 0]}>
+          {/* Foliage layers - ĐIỀU CHỈNH: điều chỉnh vị trí tương ứng */}
+          <mesh position={[0, 0.0, 0]}>
             <coneGeometry args={[0.7, 1.2, 8]} />
             <meshStandardMaterial color="#2E7D32" roughness={0.7} />
           </mesh>
@@ -118,14 +123,14 @@ const Tree: React.FC<TreeProps> = ({
       
       {type === 'oak' && (
         <>
-          {/* Trunk */}
-          <mesh position={[0, -0.5, 0]}>
+          {/* Trunk - ĐIỀU CHỈNH: di chuyển phần thân xuống dưới điểm gốc */}
+          <mesh position={[0, -0.7, 0]}>
             <cylinderGeometry args={[0.25, 0.3, 1.0, 8]} />
             <meshStandardMaterial color="#795548" roughness={0.8} />
           </mesh>
           
-          {/* Foliage */}
-          <mesh position={[0, 0.3, 0]}>
+          {/* Foliage - ĐIỀU CHỈNH: điều chỉnh vị trí tương ứng */}
+          <mesh position={[0, 0.1, 0]}>
             <sphereGeometry args={[0.8, 8, 8]} />
             <meshStandardMaterial color="#4CAF50" roughness={0.7} />
           </mesh>
@@ -134,14 +139,14 @@ const Tree: React.FC<TreeProps> = ({
       
       {type === 'birch' && (
         <>
-          {/* Trunk */}
-          <mesh position={[0, -0.3, 0]}>
+          {/* Trunk - ĐIỀU CHỈNH: di chuyển phần thân xuống dưới điểm gốc */}
+          <mesh position={[0, -0.7, 0]}>
             <cylinderGeometry args={[0.15, 0.18, 1.4, 8]} />
             <meshStandardMaterial color="#E0E0E0" roughness={0.6} />
           </mesh>
           
-          {/* Foliage */}
-          <mesh position={[0, 0.6, 0]}>
+          {/* Foliage - ĐIỀU CHỈNH: điều chỉnh vị trí tương ứng */}
+          <mesh position={[0, 0.2, 0]}>
             <sphereGeometry args={[0.6, 8, 8]} />
             <meshStandardMaterial color="#81C784" roughness={0.7} />
           </mesh>
