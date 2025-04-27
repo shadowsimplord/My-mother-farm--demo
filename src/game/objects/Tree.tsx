@@ -94,8 +94,8 @@ const Tree: React.FC<TreeProps> = ({
       position={position}
       rotation={rotation}
       scale={[scale, scale, scale]}
-      castShadow
-      receiveShadow
+      castShadow={true}
+      receiveShadow={true}
     >
       {type === 'pine' && (
         <>

@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo } from 'react';
+import React, { useRef, useCallback, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { ThreeEvent } from '@react-three/fiber';
 import { TreeInfo } from '../../types';
@@ -51,9 +51,18 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
     }
   }, [id, treePosClone, daysPlanted, _type, status, onClick]);
   
-  // Cập nhật kiểu event tương tự cho các hàm khác
+  // Thêm state để theo dõi trạng thái hover
+  const [isHovered, setIsHovered] = useState(false);
+
   const handlePointerOver = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    
+    // Tránh gửi nhiều sự kiện khi đã đang hover
+    if (isHovered) return;
+    
+    // Đánh dấu là đang hover
+    setIsHovered(true);
+    
     if (onHover) {
       // Truyền bản sao của position thay vì tham chiếu trực tiếp
       onHover({ 
@@ -64,10 +73,14 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
         status 
       }, true);
     }
-  }, [id, treePosClone, daysPlanted, _type, status, onHover]);
+  }, [id, treePosClone, daysPlanted, _type, status, onHover, isHovered]);
   
   const handlePointerOut = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    
+    // Reset trạng thái hover
+    setIsHovered(false);
+    
     if (onHover) {
       // Truyền bản sao của position thay vì tham chiếu trực tiếp
       onHover({ 
@@ -79,7 +92,7 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
       }, false);
     }
   }, [id, treePosClone, daysPlanted, _type, status, onHover]);
-  
+
   const colors = {
     trunk: '#6D4C41',
     leaves: '#1B5E20',

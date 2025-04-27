@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo } from 'react';
+import React, { useRef, useCallback, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { ThreeEvent } from '@react-three/fiber';
 import { TreeInfo } from '../../types';
@@ -45,9 +45,18 @@ const CherryTree: React.FC<CherryTreeProps> = ({
     }
   }, [_id, treePosClone, daysPlanted, status, onClick]);
   
-  // Cập nhật kiểu event tương tự cho các hàm khác
+  // Thêm state để theo dõi trạng thái hover
+  const [isHovered, setIsHovered] = useState(false);
+
   const handlePointerOver = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    
+    // Tránh gửi nhiều sự kiện khi đã đang hover
+    if (isHovered) return;
+    
+    // Đánh dấu là đang hover
+    setIsHovered(true);
+    
     if (onHover) {
       onHover({ 
         id: _id, 
@@ -57,10 +66,14 @@ const CherryTree: React.FC<CherryTreeProps> = ({
         status 
       }, true);
     }
-  }, [_id, treePosClone, daysPlanted, status, onHover]);
+  }, [_id, treePosClone, daysPlanted, status, onHover, isHovered]);
   
   const handlePointerOut = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    
+    // Reset trạng thái hover
+    setIsHovered(false);
+    
     if (onHover) {
       onHover({ 
         id: _id, 

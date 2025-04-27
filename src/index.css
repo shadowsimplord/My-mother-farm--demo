@@ -66,3 +66,30 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Dodaj animacje i style dla przejść */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.farm-transition {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+.farm-navigation-item {
+  transition: all 0.3s ease;
+}
+
+.farm-navigation-item:hover {
+  transform: scale(1.05);
+}
+
+.view-description {
+  animation: slideIn 0.5s ease;
+}

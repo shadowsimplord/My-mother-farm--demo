@@ -7,10 +7,12 @@ import { Trees } from '../game/objects/Tree';
 import House from '../game/objects/House';
 import { CoffeeTrees } from '../game/objects/FruitTrees/CoffeeTree';
 import { CherryTrees } from '../game/objects/FruitTrees/CherryTree';
+import { CornPlants } from '../game/objects/FruitTrees/CornPlant';
 import { TreeData, TreeType, TreeInfo } from '../game/types';
 import fruitTreesData from '../game/systems/FruitTreesdata.json';
 import objectData from '../game/systems/objectdata.json';
-import SelectionIndicator from '../game/objects/SelectionIndicator';
+import CameraController from '../game/controllers/CameraController';
+import FarmNavigation from '../components/FarmNavigation';
 
 import DevTools from '../components/DevTools';
 
@@ -63,11 +65,17 @@ const OriginPoint = ({ size = 0.2, visible = false }) => {
   );
 };
 
+// Cập nhật interface TreeInfoExtended bao gồm các trường bổ sung
+interface TreeInfoExtended extends TreeInfo {
+  owner?: string;
+  leasePeriod?: string;
+}
+
 // Main component that sets up the Canvas
 const FarmScene: React.FC = () => {
   // Trạng thái hiển thị DevTools
   const [devToolsVisible, setDevToolsVisible] = useState(false);
-  const [selectedTree, setSelectedTree] = useState<TreeInfo | null>(null);
+  const [selectedTree, setSelectedTree] = useState<TreeInfoExtended | null>(null);
   const [hoverTreePosition, setHoverTreePosition] = useState<[number, number, number] | null>(null);
   
   // Hàm đóng bảng thông tin, khi đóng cũng sẽ xóa hiệu ứng hover
@@ -90,6 +98,9 @@ const FarmScene: React.FC = () => {
           setHoverTreePosition={setHoverTreePosition}
         />
       </Canvas>
+      
+      {/* Dodaj nawigację farmy po prawej stronie */}
+      <FarmNavigation position="right" />
       
       {/* Developer Tools - đã di chuyển ra bên ngoài Canvas */}
       <DevTools visible={devToolsVisible} setVisible={setDevToolsVisible} />
@@ -121,10 +132,12 @@ const FarmScene: React.FC = () => {
             marginBottom: 15
           }}>
             <h2 style={{ margin: 0, color: '#2E7D32', fontSize: '1.4rem' }}>
-              {selectedTree.type === 'cherry' ? 'Cây Anh Đào NFT' : 'Cây Cà Phê NFT'}
+              {selectedTree.type === 'cherry' ? 'Cây Anh Đào ' : 
+               selectedTree.type === 'corn' ? 'Cây Ngô ' : 
+               'Cây Cà Phê '}
             </h2>
             <button 
-              onClick={handleCloseInfoPanel} // Sử dụng hàm mới thay vì chỉ setSelectedTree(null)
+              onClick={handleCloseInfoPanel}
               style={{
                 background: 'none',
                 border: 'none',
@@ -231,7 +244,7 @@ const FarmScene: React.FC = () => {
 
 // Cập nhật interface cho FarmSceneContent để nhận thêm props
 interface FarmSceneContentProps {
-  onSelectTree: (tree: TreeInfo | null) => void;
+  onSelectTree: (tree: TreeInfoExtended | null) => void;
   hoverTreePosition: [number, number, number] | null;
   setHoverTreePosition: React.Dispatch<React.SetStateAction<[number, number, number] | null>>;
 }
@@ -244,10 +257,8 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
 }) => {
   const { camera, raycaster, scene, mouse } = useThree();
   const terrainRef = useRef<THREE.Mesh>(null);
-  const [useHeightmap, setUseHeightmap] = useState<boolean>(true);
+  const [useHeightmap] = useState<boolean>(true); // Xóa setter không dùng nữa
   const [trees, setTrees] = useState<TreeData[]>([]);
-  const [selectedTreePosition, setSelectedTreePosition] = useState<[number, number, number] | null>(null);
-  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   
   // Set initial camera position
   useEffect(() => {
@@ -256,49 +267,32 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
   }, [camera]);
 
   // Handle tree selection directly
-  const handleSelectTree = (tree: TreeInfo | null) => {
+  const handleSelectTree = (tree: TreeInfoExtended | null) => {
     console.log("Tree clicked:", tree);
     if (tree) {
-      // Lưu vị trí của cây đã chọn để hiển thị hiệu ứng
-      setSelectedTreePosition(tree.position);
       // Pass tree data to parent component
       onSelectTree(tree);
     } else {
-      setSelectedTreePosition(null);
       onSelectTree(null);
     }
   };
 
-  // Lấy setter từ component cha
-  useEffect(() => {
-    const handleTreeAction = (e: CustomEvent<{action: string; treeId: string}>) => {
-      if (e.detail && e.detail.action && e.detail.treeId) {
-        console.log(`Performing action: ${e.detail.action} on tree: ${e.detail.treeId}`);
-        
-        // Hiển thị hiệu ứng hành động
-        setActionInProgress(e.detail.action);
-        
-        // Mô phỏng thời gian để hoàn thành hành động
-        setTimeout(() => {
-          setActionInProgress(null);
-          // Thông báo hành động đã hoàn thành
-          window.dispatchEvent(new CustomEvent('tree-action-completed', { 
-            detail: { 
-              action: e.detail.action, 
-              treeId: e.detail.treeId,
-              success: true 
-            } 
-          }));
-        }, 1500);
+  // Hàm xử lý hover vào cây - vẫn giữ logic để cập nhật state nếu cần cho các tính năng khác
+  const handleTreeHover = (info: TreeInfo, isHovering: boolean) => {
+    // Vẫn giữ logic này nhưng không hiển thị vòng tròn
+    if (isHovering) {
+      setHoverTreePosition([...info.position]);
+      console.log(`Hover on ${info.type} tree at [${info.position.join(', ')}]`);
+    } else {
+      if (hoverTreePosition &&
+          Math.abs(hoverTreePosition[0] - info.position[0]) < 0.1 &&
+          Math.abs(hoverTreePosition[1] - info.position[1]) < 0.1 &&
+          Math.abs(hoverTreePosition[2] - info.position[2]) < 0.1) {
+        console.log(`Hover off ${info.type} tree`);
+        setHoverTreePosition(null);
       }
-    };
-    
-    window.addEventListener('tree-action', handleTreeAction as EventListener);
-    
-    return () => {
-      window.removeEventListener('tree-action', handleTreeAction as EventListener);
-    };
-  }, []);
+    }
+  };
 
   // Thay đổi đoạn code tạo cây để sử dụng vị trí cố định thay vì raycasting
   useEffect(() => {
@@ -321,9 +315,9 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
     }
   }, []);
 
-  // Animation loop - Cập nhật vị trí camera và gửi thông tin đến DevTools
+  // Animation loop - Cập nhật vị trí camera và gửi thông tin đến DevTools - đã khôi phục về mặc định
   useFrame(() => {
-    // Gửi thông tin vị trí camera cho DevTools
+    // Gửi thông tin vị trí camera cho DevTools (mỗi frame)
     window.dispatchEvent(new CustomEvent('camera-update', { 
       detail: { 
         camera: { 
@@ -360,34 +354,17 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
     }
   };
 
-  // Hàm xử lý hover vào cây
-  const handleTreeHover = (info: TreeInfo, isHovering: boolean) => {
-    if (isHovering) {
-      // Chỉ cập nhật nếu không có cây nào đang được chọn
-      if (!selectedTreePosition) {
-        // Luôn cập nhật vị trí hover mới, bất kể có cây nào đang được hover trước đó
-        const positionCopy: [number, number, number] = [...info.position] as [number, number, number];
-        setHoverTreePosition(positionCopy);
-      }
-    } else {
-      // Chỉ xóa hover nếu vị trí hover trùng với vị trí cây đang hover
-      if (hoverTreePosition && 
-          hoverTreePosition[0] === info.position[0] && 
-          hoverTreePosition[1] === info.position[1] && 
-          hoverTreePosition[2] === info.position[2]) {
-        setHoverTreePosition(null);
-      }
-    }
-  };
-
   return (
     <>
+      {/* Dodaj kontroler kamery dla płynnej animacji */}
+      <CameraController initialViewId="overview" transitionDuration={2.0} />
+      
       {/* Lighting */}
       <ambientLight intensity={0.5} />
       <directionalLight 
         position={[10, 15, 5]} 
         intensity={1} 
-        castShadow 
+        castShadow={true} 
         shadow-mapSize={[2048, 2048]}
       />
       
@@ -406,7 +383,13 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
       {fruitTreesData && (
         <>
           <CoffeeTrees 
-            trees={fruitTreesData.filter(tree => tree.type === 'coffee-tree')} 
+            trees={fruitTreesData
+              .filter(tree => tree.type === 'coffee-tree')
+              .map((tree, index) => ({
+                ...tree,
+                id: tree.id || `coffee-${index}-${Date.now()}`, // Đảm bảo ID luôn duy nhất
+                position: tree.position as [number, number, number]
+              }))} 
             onTreeClick={(info) => {
               console.log("Coffee tree clicked:", info);
               handleSelectTree(info);
@@ -414,45 +397,47 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
             onTreeHover={(info, isHovering) => handleTreeHover(info, isHovering)}
           />
           <CherryTrees 
-            trees={fruitTreesData.filter(tree => tree.type === 'cherry')} 
+            trees={fruitTreesData
+              .filter(tree => tree.type === 'cherry')
+              .map((tree, index) => ({
+                ...tree,
+                id: tree.id || `cherry-${index}-${Date.now()}`, // Đảm bảo ID luôn duy nhất
+                position: tree.position as [number, number, number]
+              }))}
             onTreeClick={(info) => {
               console.log("Cherry tree clicked:", info);
               handleSelectTree(info);
             }}
             onTreeHover={(info, isHovering) => handleTreeHover(info, isHovering)}
           />
+          
+          <CornPlants
+            plants={fruitTreesData
+              .filter(tree => tree.type === 'corn')
+              .map((tree, index) => ({
+                ...tree,
+                id: tree.id || `corn-${index}-${Date.now()}`, // Đảm bảo ID luôn duy nhất
+                position: tree.position as [number, number, number]
+              }))}
+            onPlantClick={(info) => {
+              console.log("Corn plant clicked:", info);
+              handleSelectTree(info);
+            }}
+            onPlantHover={(info, isHovering) => handleTreeHover(info, isHovering)}
+          />
         </>
       )}
       
-      {hoverTreePosition && !selectedTreePosition && (
-        <SelectionIndicator 
-          position={hoverTreePosition}
-          size={1.2}
-          color="#BBDEFB"
-          key={`hover-indicator-${hoverTreePosition.join(',')}`}
-        />
-      )}
-
-      {selectedTreePosition && (
-        <SelectionIndicator 
-          position={selectedTreePosition}
-          size={1.5}
-          color={actionInProgress ? getActionColor(actionInProgress) : "#4CAF50"}
-          key={`select-indicator-${selectedTreePosition.join(',')}`}
-        />
-      )}
-      
+      {/* Zaktualizuj OrbitControls, aby współpracował z CameraController */}
       <OrbitControls 
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
         maxPolarAngle={Math.PI / 2.2}
+        makeDefault
+        enableDamping
+        dampingFactor={0.05}
       />
-
-      <mesh position={[-20, 0, -20]} onClick={() => setUseHeightmap(prev => !prev)}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color={useHeightmap ? '#00ff00' : '#ff0000'} />
-      </mesh>
     </>
   );
 };
@@ -461,7 +446,7 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
 function getStatusColor(status?: string): string {
   switch (status?.toLowerCase()) {
     case 'good': return '#4CAF50'; // Xanh lá - cây khỏe mạnh
-    case 'normal': return '#FF9800'; // Cam - cây bình thường
+    case 'normal': return '#00c3ff'; // Cam - cây bình thường
     case 'bad': return '#F44336'; // Đỏ - cây không khỏe
     default: return '#9E9E9E'; // Xám - không có thông tin
   }
@@ -470,26 +455,18 @@ function getStatusColor(status?: string): string {
 function getStatusLabel(status?: string): string {
   switch (status?.toLowerCase()) {
     case 'good': return '✅ Khỏe Mạnh';
-    case 'normal': return '⚠️ Bình Thường';
-    case 'bad': return '❌ Cần Chăm Sóc';
+    case 'normal': return ' Bình Thường';
+    case 'bad': return '⚠️ Cần Chăm Sóc';
     default: return '❓ Không Xác Định';
   }
 }
 
-function calculateYield(tree: any): number {
+function calculateYield(tree: TreeInfoExtended): number {
   // Tính năng suất dựa trên tuổi cây và trạng thái
-  let baseYield = 0;
-  
-  // Dựa trên tuổi cây
-  if (tree.daysPlanted < 5) {
-    baseYield = 0; // Cây còn non chưa cho quả
-  } else if (tree.daysPlanted < 10) {
-    baseYield = 30; // Cây bắt đầu cho quả
-  } else if (tree.daysPlanted < 30) {
-    baseYield = 70; // Cây đang phát triển tốt
-  } else {
-    baseYield = 100; // Cây trưởng thành hoàn toàn
-  }
+  const baseYield = tree.daysPlanted ? 
+    (tree.daysPlanted < 5 ? 0 : 
+     tree.daysPlanted < 10 ? 30 : 
+     tree.daysPlanted < 30 ? 70 : 100) : 0;
   
   // Điều chỉnh dựa trên trạng thái
   switch (tree.status?.toLowerCase()) {
@@ -500,9 +477,9 @@ function calculateYield(tree: any): number {
   }
 }
 
-function calculatePrice(tree: any): number {
+function calculatePrice(tree: TreeInfoExtended): number {
   // Tính giá thuê dựa trên loại cây và năng suất
-  let basePrice = tree.type === 'cherry' ? 12 : 9; // Giá cơ bản: Cherry đắt hơn Coffee
+  const basePrice = tree.type === 'cherry' ? 12 : 9; // Giá cơ bản: Cherry đắt hơn Coffee
   
   // Điều chỉnh theo năng suất
   const yield_ = calculateYield(tree);
@@ -510,16 +487,6 @@ function calculatePrice(tree: any): number {
   
   // Tính giá cuối cùng (làm tròn đến 1 số thập phân)
   return Math.round((basePrice * (0.7 + yieldFactor * 0.3)) * 10) / 10;
-}
-
-function getActionColor(action: string): string {
-  switch (action.toLowerCase()) {
-    case 'plow': return '#FF9800'; // Cam - hành động cày
-    case 'seed': return '#4CAF50'; // Xanh lá - hành động gieo hạt
-    case 'water': return '#2196F3'; // Xanh dương - hành động tưới nước
-    case 'harvest': return '#FFC107'; // Vàng - hành động thu hoạch
-    default: return '#9E9E9E'; // Xám - không xác định
-  }
 }
 
 export default FarmScene;
