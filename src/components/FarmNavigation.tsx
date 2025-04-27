@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FARM_VIEWPOINTS, CameraPosition } from '../game/controllers/CameraController';
+import { FARM_VIEWPOINTS } from '../game/controllers/CameraController';
 
 interface FarmNavigationProps {
   position?: 'top' | 'left' | 'right' | 'bottom';
@@ -8,15 +8,11 @@ interface FarmNavigationProps {
 const FarmNavigation: React.FC<FarmNavigationProps> = ({ position = 'right' }) => {
   const [activeViewId, setActiveViewId] = useState<string>('overview');
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
-  const [viewDescription, setViewDescription] = useState<string | undefined>(
-    FARM_VIEWPOINTS.find(v => v.id === 'overview')?.description
-  );
   
   useEffect(() => {
     const handleViewChanging = (e: CustomEvent) => {
       if (e.detail && e.detail.toViewId) {
         setActiveViewId(e.detail.toViewId);
-        setViewDescription(e.detail.view?.description);
         setIsTransitioning(true);
         
         // Reset transitioning state after animation completes

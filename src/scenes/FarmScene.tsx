@@ -374,7 +374,11 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
       <CoordinateAxes size={50} visible={false} />
       <OriginPoint size={0.3} visible={false} />
       
-      <Terrain ref={terrainRef} onClick={handleSceneClick} useHeightmap={useHeightmap} />
+      <Terrain 
+        ref={terrainRef} 
+        onClick={(e: any) => handleSceneClick(e)} 
+        useHeightmap={useHeightmap} 
+      />
       
       <House position={[-2.62, -1.97, -1.05]} rotation={[0, Math.PI / 2, 0]} scale={1.5} />
       

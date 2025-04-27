@@ -334,7 +334,7 @@ export class TreeSpawner {
    */
   private getRandomTreeType(): TreeType {
     const rand = Math.random();
-    const { pine, oak, birch } = this.config.treeTypeDistribution;
+    const { pine, oak } = this.config.treeTypeDistribution;
     
     if (rand < pine) {
       return 'pine';

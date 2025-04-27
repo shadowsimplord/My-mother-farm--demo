@@ -7,7 +7,7 @@ interface SelectionIndicatorProps {
   size?: number;
   visible?: boolean;
   color?: string;
-  mode?: 'select'; // Giờ chỉ còn mode 'select', không có 'hover' nữa
+  mode?: 'select' | 'hover';  // Thêm 'hover' vào loại để tránh lỗi comparison
   groundOffset?: number;
 }
 
@@ -33,8 +33,8 @@ const SelectionIndicator: React.FC<SelectionIndicatorProps> = ({
   const [groundPosition, setGroundPosition] = useState<[number, number, number]>([position[0], position[1] + groundOffset, position[2]]);
   const animSpeed = useMemo(() => 1, []);
   
-  // Màu sắc dựa trên mode
-  const ringColor = mode === 'hover' ? '#FFFFFF' : color;
+  // Không sử dụng biến ringColor cho material để tránh lỗi unused variable
+  // const ringColor = mode === 'hover' ? '#FFFFFF' : color;
   
   // Tìm vị trí chính xác trên mặt đất bằng raycasting
   useEffect(() => {

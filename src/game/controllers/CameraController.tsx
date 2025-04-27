@@ -1,8 +1,13 @@
 import { useRef, useEffect, useState } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Vector3, Quaternion } from 'three';
-import * as THREE from 'three';
 import { easing } from 'maath';
+
+// Định nghĩa kiểu cho kiểm tra controls
+type ControlsType = {
+  target?: Vector3;
+  update?: () => void;
+};
 
 export interface CameraPosition {
   id: string;
@@ -62,9 +67,6 @@ const CameraController: React.FC<CameraControllerProps> = ({
   const { camera, controls } = useThree();
   const [currentView, setCurrentView] = useState<string>(initialViewId);
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
-  const [targetPosition] = useState<Vector3>(new Vector3());
-  const [targetQuaternion] = useState<Quaternion>(new Quaternion());
-  const [currentLookAt] = useState<Vector3>(new Vector3());
   
   // Référence pour suivre la progression de la transition
   const transitionRef = useRef({
@@ -95,9 +97,9 @@ const CameraController: React.FC<CameraControllerProps> = ({
       camera.position.set(...initialView.position);
       const targetVector = new Vector3(...initialView.target);
       camera.lookAt(targetVector);
-      if (controls) {
-        controls.target.copy(targetVector);
-        controls.update();
+      if (controls && 'target' in controls && 'update' in controls) {
+        (controls as ControlsType).target?.copy(targetVector);
+        (controls as ControlsType).update?.();
       }
     }
     
@@ -129,7 +131,7 @@ const CameraController: React.FC<CameraControllerProps> = ({
       
       // Interpoler la rotation de la caméra pour regarder vers la cible
       const tempLookAt = new Vector3().lerpVectors(
-        transitionRef.current.startRotation.clone().set(0,0,0),
+        transitionRef.current.startRotation.clone().set(0,0,0,1),
         transitionRef.current.targetLookAt,
         easedT
       );
@@ -137,9 +139,10 @@ const CameraController: React.FC<CameraControllerProps> = ({
       camera.lookAt(tempLookAt);
       
       // Mettre à jour les contrôles si disponibles
-      if (controls) {
-        controls.target.copy(tempLookAt);
-        controls.update();
+      if (controls && 'target' in controls && 'update' in controls) {
+        // Sử dụng thuộc tính target và update an toàn
+        (controls as ControlsType).target?.copy(tempLookAt);
+        (controls as ControlsType).update?.();
       }
       
       // Vérifier si la transition est terminée
@@ -147,10 +150,10 @@ const CameraController: React.FC<CameraControllerProps> = ({
         transitionRef.current.isActive = false;
         setIsTransitioning(false);
       }
-    } else if (controls) {
+    } else if (controls && 'update' in controls) {
       // Amortissement normal des contrôles pendant l'utilisation manuelle
       easing.damp3(camera.position, camera.position, 0.25, delta);
-      controls.update();
+      (controls as ControlsType).update?.();
     }
   });
 

@@ -120,10 +120,11 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
       const tilt = branchTilts[idx];
       
       // Các nhánh phụ trên mỗi nhánh chính
-      const subBranches = [0.3, 0.6, 0.9].map(pos => {
+      const subBranches = [0.3, 0.6, 0.9].map(positionFactor => {
         const smallBranchDir = direction + (Math.random() * Math.PI/2 - Math.PI/4);
         const smallBranchTilt = -Math.PI/6 + Math.random() * Math.PI/3;
-        const smallBranchLength = 0.25 + Math.random() * 0.15;
+        // Sử dụng positionFactor để điều chỉnh chiều dài nhánh
+        const smallBranchLength = 0.25 + Math.random() * 0.15 * positionFactor;
         
         // Thông tin lá trên nhánh phụ
         const leaves = [1, 2, 3].map(() => {
@@ -238,13 +239,11 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
             
             {/* 2-3 nhánh nhỏ trên mỗi nhánh chính - sử dụng giá trị từ treeStructure */}
             {branch.subBranches.map((subBranch, subIdx) => {
-              const pos = [0.3, 0.6, 0.9][subIdx];
-              
               // Vị trí gốc của nhánh nhỏ trên nhánh chính
               const origin = {
-                x: Math.sin(branch.direction) * (branch.branchLength * pos) * Math.cos(branch.tilt),
-                y: branchY + (branch.branchLength * pos) * Math.sin(branch.tilt),
-                z: Math.cos(branch.direction) * (branch.branchLength * pos) * Math.cos(branch.tilt)
+                x: Math.sin(branch.direction) * (branch.branchLength * [0.3, 0.6, 0.9][subIdx]) * Math.cos(branch.tilt),
+                y: branchY + (branch.branchLength * [0.3, 0.6, 0.9][subIdx]) * Math.sin(branch.tilt),
+                z: Math.cos(branch.direction) * (branch.branchLength * [0.3, 0.6, 0.9][subIdx]) * Math.cos(branch.tilt)
               };
               
               return (
