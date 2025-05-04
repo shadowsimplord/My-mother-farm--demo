@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FARM_VIEWPOINTS } from '../game/controllers/CameraController';
+import { FARM_VIEWPOINTS } from '../../game/controllers/CameraController';
 
 interface FarmNavigationProps {
   position?: 'top' | 'left' | 'right' | 'bottom';

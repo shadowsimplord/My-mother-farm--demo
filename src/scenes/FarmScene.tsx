@@ -2,19 +2,19 @@ import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Sky, Environment } from '@react-three/drei';
 import * as THREE from 'three';
-import Terrain from '../game/map/Terrain';
+import Terrain from '../game/world/Terrain';
 import { Trees } from '../game/objects/Tree';
 import House from '../game/objects/House';
 import { CoffeeTrees } from '../game/objects/FruitTrees/CoffeeTree';
 import { CherryTrees } from '../game/objects/FruitTrees/CherryTree';
 import { CornPlants } from '../game/objects/FruitTrees/CornPlant';
 import { TreeData, TreeType, TreeInfo } from '../game/types';
-import fruitTreesData from '../game/systems/FruitTreesdata.json';
-import objectData from '../game/systems/objectdata.json';
+import fruitTreesData from '../game/systems/data/FruitTreesdata.json';
+import objectData from '../game/systems/data/FruitTreesdata.json';
 import CameraController from '../game/controllers/CameraController';
-import FarmNavigation from '../components/FarmNavigation';
+import FarmNavigation from '../components/ui/FarmNavigation';
 
-import DevTools from '../components/DevTools';
+import DevTools from '../components/controls/DevTools';
 
 // Component cho AxesHelper - hiển thị trục tọa độ 3D (X, Y, Z)
 const CoordinateAxes = ({ size = 10, visible = false }) => {
@@ -301,11 +301,10 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
       
       // Sử dụng vị trí cố định từ objectData
       const fixedTrees: TreeData[] = objectData.map(tree => {
-        // Sử dụng trực tiếp tọa độ xyz từ file cấu hình không cần raycasting
         return {
           position: [...tree.position] as [number, number, number],
-          rotation: tree.rotation ? [...tree.rotation] as [number, number, number] : [0, 0, 0],
-          scale: tree.scale || 1.0,
+          rotation: [0, 0, 0],
+          scale: 1.0,
           type: tree.type as TreeType
         };
       });
