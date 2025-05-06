@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState, useEffect } from 'react';
+import React, { useRef, useMemo, useState, useEffect, memo } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { createNoise2D } from 'simplex-noise';
@@ -253,9 +253,10 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
         color="#45a74d" // Màu xanh lá cây cho mặt trên
         roughness={0.8}
         metalness={0.2}
+        side={THREE.FrontSide}
       />
     </mesh>
   );
 });
 
-export default Terrain;
+export default memo(Terrain);

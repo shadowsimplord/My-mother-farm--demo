@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Sky, Environment } from '@react-three/drei';
 import * as THREE from 'three';
@@ -15,6 +15,15 @@ import CameraController from '../game/controllers/CameraController';
 import FarmNavigation from '../components/ui/FarmNavigation';
 
 import DevTools from '../components/controls/DevTools';
+
+// Debounce helper
+function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
+  let timeout: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn(...args), delay);
+  };
+}
 
 // Component cho AxesHelper - hiển thị trục tọa độ 3D (X, Y, Z)
 const CoordinateAxes = ({ size = 10, visible = false }) => {
@@ -78,6 +87,13 @@ const FarmScene: React.FC = () => {
   const [selectedTree, setSelectedTree] = useState<TreeInfoExtended | null>(null);
   const [hoverTreePosition, setHoverTreePosition] = useState<[number, number, number] | null>(null);
   
+  // Debounced setter for hover position
+  const debouncedSetHoverTreePosition = useRef(
+    debounce((pos: [number, number, number] | null) => {
+      setHoverTreePosition(pos);
+    }, 24) // ~40fps
+  ).current;
+
   // Hàm đóng bảng thông tin, khi đóng cũng sẽ xóa hiệu ứng hover
   const handleCloseInfoPanel = () => {
     setSelectedTree(null);
@@ -95,7 +111,7 @@ const FarmScene: React.FC = () => {
         <FarmSceneContent 
           onSelectTree={(tree) => setSelectedTree(tree)} 
           hoverTreePosition={hoverTreePosition}
-          setHoverTreePosition={setHoverTreePosition}
+          setHoverTreePosition={debouncedSetHoverTreePosition}
         />
       </Canvas>
       
@@ -277,22 +293,24 @@ export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({
     }
   };
 
-  // Hàm xử lý hover vào cây - vẫn giữ logic để cập nhật state nếu cần cho các tính năng khác
-  const handleTreeHover = (info: TreeInfo, isHovering: boolean) => {
-    // Vẫn giữ logic này nhưng không hiển thị vòng tròn
+  // Hàm xử lý hover vào cây - chỉ setState khi thực sự thay đổi
+  const handleTreeHover = useCallback((info: TreeInfo, isHovering: boolean) => {
     if (isHovering) {
-      setHoverTreePosition([...info.position]);
-      console.log(`Hover on ${info.type} tree at [${info.position.join(', ')}]`);
+      if (!hoverTreePosition ||
+        Math.abs(hoverTreePosition[0] - info.position[0]) > 0.01 ||
+        Math.abs(hoverTreePosition[1] - info.position[1]) > 0.01 ||
+        Math.abs(hoverTreePosition[2] - info.position[2]) > 0.01) {
+        setHoverTreePosition([...info.position]);
+      }
     } else {
       if (hoverTreePosition &&
-          Math.abs(hoverTreePosition[0] - info.position[0]) < 0.1 &&
-          Math.abs(hoverTreePosition[1] - info.position[1]) < 0.1 &&
-          Math.abs(hoverTreePosition[2] - info.position[2]) < 0.1) {
-        console.log(`Hover off ${info.type} tree`);
+        Math.abs(hoverTreePosition[0] - info.position[0]) < 0.1 &&
+        Math.abs(hoverTreePosition[1] - info.position[1]) < 0.1 &&
+        Math.abs(hoverTreePosition[2] - info.position[2]) < 0.1) {
         setHoverTreePosition(null);
       }
     }
-  };
+  }, [hoverTreePosition, setHoverTreePosition]);
 
   // Thay đổi đoạn code tạo cây để sử dụng vị trí cố định thay vì raycasting
   useEffect(() => {

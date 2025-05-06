@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { FARM_VIEWPOINTS } from '../../game/controllers/CameraController';
 
 interface FarmNavigationProps {
@@ -128,4 +128,4 @@ const FarmNavigation: React.FC<FarmNavigationProps> = ({ position = 'right' }) =
   );
 };
 
-export default FarmNavigation;
+export default memo(FarmNavigation);

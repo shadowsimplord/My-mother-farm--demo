@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo, useState } from 'react';
+import React, { useRef, useCallback, useMemo, useState, memo } from 'react';
 import * as THREE from 'three';
 import { ThreeEvent } from '@react-three/fiber';
 import { TreeInfo } from '../../types';
@@ -198,13 +198,13 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
       {/* Thân cây cà phê */}
       <mesh castShadow position={[0, 0.7, 0]}>
         <cylinderGeometry args={[0.12, 0.18, 1.4, 8]} />
-        <meshStandardMaterial color={colors.trunk} roughness={0.8} />
+        <meshStandardMaterial color={colors.trunk} roughness={0.8} side={THREE.FrontSide} />
       </mesh>
       
       {/* Phần gốc cây mở rộng */}
       <mesh castShadow position={[0, 0.1, 0]}>
         <cylinderGeometry args={[0.2, 0.25, 0.2, 8]} />
-        <meshStandardMaterial color={colors.trunk} roughness={0.9} />
+        <meshStandardMaterial color={colors.trunk} roughness={0.9} side={THREE.FrontSide} />
       </mesh>
 
       {/* 6 Nhánh chính theo các hướng khác nhau - sử dụng giá trị từ treeStructure */}
@@ -220,7 +220,7 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
               rotation={[branch.tilt, branch.direction, 0]}
             >
               <cylinderGeometry args={[0.05, 0.08, branch.branchLength, 5]} />
-              <meshStandardMaterial color={colors.branches} roughness={0.7} />
+              <meshStandardMaterial color={colors.branches} roughness={0.7} side={THREE.FrontSide} />
             </mesh>
             
             {/* Tán lá trên mỗi nhánh chính */}
@@ -234,7 +234,7 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
               rotation={[0, branch.direction, 0]}
             >
               <sphereGeometry args={[0.25, 8, 8]} />
-              <meshStandardMaterial color={colors.leaves} roughness={0.6} />
+              <meshStandardMaterial color={colors.leaves} roughness={0.6} side={THREE.FrontSide} />
             </mesh>
             
             {/* 2-3 nhánh nhỏ trên mỗi nhánh chính - sử dụng giá trị từ treeStructure */}
@@ -255,7 +255,7 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
                     rotation={[subBranch.smallBranchTilt, subBranch.smallBranchDir, 0]}
                   >
                     <cylinderGeometry args={[0.02, 0.03, subBranch.smallBranchLength, 4]} />
-                    <meshStandardMaterial color={colors.smallBranches} roughness={0.6} />
+                    <meshStandardMaterial color={colors.smallBranches} roughness={0.6} side={THREE.FrontSide} />
                   </mesh>
                   
                   {/* Tán lá nhỏ trên nhánh nhỏ */}
@@ -268,7 +268,7 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
                     ]}
                   >
                     <sphereGeometry args={[0.12, 6, 6]} />
-                    <meshStandardMaterial color={colors.leaves} roughness={0.6} />
+                    <meshStandardMaterial color={colors.leaves} roughness={0.6} side={THREE.FrontSide} />
                   </mesh>
                   
                   {/* Chi tiết lá - sử dụng giá trị từ treeStructure */}
@@ -287,6 +287,7 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
                       <meshStandardMaterial 
                         color={leaf.isLightLeaf ? colors.darkLeaves : colors.leaves} 
                         roughness={0.6} 
+                        side={THREE.DoubleSide} 
                       />
                     </mesh>
                   ))}
@@ -307,6 +308,7 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
                               daysPlanted > 7 ? colors.fruit :
                               colors.unripeFruit} 
                         roughness={0.5} 
+                        side={THREE.FrontSide} 
                       />
                     </mesh>
                   )}
@@ -329,7 +331,7 @@ const CoffeeTree: React.FC<CoffeeTreeProps> = ({
           rotation={leaf.rotation}
         >
           <boxGeometry args={[0.12, 0.01, 0.05]} />
-          <meshStandardMaterial color="#5D4037" roughness={0.9} />
+          <meshStandardMaterial color="#5D4037" roughness={0.9} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>
@@ -376,4 +378,4 @@ interface CoffeeTreesProps {
   onTreeHover?: (info: TreeInfo, isHovering: boolean) => void;
 }
 
-export default CoffeeTree;
+export default memo(CoffeeTree);

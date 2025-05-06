@@ -217,24 +217,24 @@ const CherryTree: React.FC<CherryTreeProps> = ({
       {/* Thân cây */}
       <mesh castShadow position={[0, 0.5, 0]}>
         <cylinderGeometry args={[0.12, 0.2, 1.0, 8]} />
-        <meshStandardMaterial color={colors.trunk} roughness={0.9} />
+        <meshStandardMaterial color={colors.trunk} roughness={0.9} side={THREE.FrontSide} />
       </mesh>
 
       {/* Phần gốc cây */}
       <mesh castShadow position={[0, 0.1, 0]}>
         <cylinderGeometry args={[0.25, 0.3, 0.2, 8]} />
-        <meshStandardMaterial color={colors.trunk} roughness={0.9} />
+        <meshStandardMaterial color={colors.trunk} roughness={0.9} side={THREE.FrontSide} />
       </mesh>
 
       {/* Phần thân trên phân nhánh */}
       <mesh castShadow position={[0, 1.1, 0]} rotation={[0, 0, 0.2]}>
         <cylinderGeometry args={[0.07, 0.12, 0.5, 6]} />
-        <meshStandardMaterial color={colors.branches} roughness={0.8} />
+        <meshStandardMaterial color={colors.branches} roughness={0.8} side={THREE.FrontSide} />
       </mesh>
       
       <mesh castShadow position={[0, 1.1, 0]} rotation={[0, 0, -0.2]}>
         <cylinderGeometry args={[0.07, 0.12, 0.5, 6]} />
-        <meshStandardMaterial color={colors.branches} roughness={0.8} />
+        <meshStandardMaterial color={colors.branches} roughness={0.8} side={THREE.FrontSide} />
       </mesh>
 
       {/* Nhánh chính - sử dụng giá trị từ treeStructure */}
@@ -250,7 +250,7 @@ const CherryTree: React.FC<CherryTreeProps> = ({
               rotation={[branch.tilt, branch.angle, branch.randomRotation]}
             >
               <cylinderGeometry args={[0.04, 0.06, branch.branchLength, 5]} />
-              <meshStandardMaterial color={colors.branches} roughness={0.7} />
+              <meshStandardMaterial color={colors.branches} roughness={0.7} side={THREE.FrontSide} />
             </mesh>
 
             {/* Tán lá chính */}
@@ -266,6 +266,7 @@ const CherryTree: React.FC<CherryTreeProps> = ({
               <meshStandardMaterial 
                 color={branch.leafRandomFactor > 0.5 ? colors.leaves : colors.lightLeaves} 
                 roughness={0.7} 
+                side={THREE.FrontSide} 
               />
             </mesh>
 
@@ -286,7 +287,7 @@ const CherryTree: React.FC<CherryTreeProps> = ({
                       {/* Cuống quả */}
                       <mesh castShadow position={[0, 0.05, 0]}>
                         <cylinderGeometry args={[0.01, 0.01, 0.1, 4]} />
-                        <meshStandardMaterial color="#654321" roughness={0.5} />
+                        <meshStandardMaterial color="#654321" roughness={0.5} side={THREE.FrontSide} />
                       </mesh>
 
                       {/* Quả cherry */}
@@ -301,6 +302,7 @@ const CherryTree: React.FC<CherryTreeProps> = ({
                             color={hasMatureFruits ? colors.ripeCherries : colors.cherries} 
                             roughness={0.3} 
                             metalness={0.1}
+                            side={THREE.FrontSide} 
                           />
                         </mesh>
                       ))}
@@ -317,7 +319,7 @@ const CherryTree: React.FC<CherryTreeProps> = ({
                           position={flower.offset}
                         >
                           <sphereGeometry args={[0.03, 6, 6]} />
-                          <meshStandardMaterial color={colors.blossoms} roughness={0.5} />
+                          <meshStandardMaterial color={colors.blossoms} roughness={0.5} side={THREE.FrontSide} />
                         </mesh>
                       ))}
                     </group>
@@ -329,7 +331,7 @@ const CherryTree: React.FC<CherryTreeProps> = ({
                     position={[origin.x, origin.y, origin.z]}
                   >
                     <sphereGeometry args={[0.15, 6, 6]} />
-                    <meshStandardMaterial color={colors.leaves} roughness={0.7} />
+                    <meshStandardMaterial color={colors.leaves} roughness={0.7} side={THREE.FrontSide} />
                   </mesh>
 
                   {/* Chi tiết lá */}

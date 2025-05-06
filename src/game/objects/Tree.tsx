@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, memo } from 'react';
 import * as THREE from 'three';
 import { TreeType } from '../systems/TreeSpawner';
 
@@ -38,21 +38,21 @@ const Tree: React.FC<TreeProps> = ({
           {/* Trunk - ĐIỀU CHỈNH: di chuyển phần thân xuống dưới điểm gốc để đảm bảo cây đúng điểm (0,0,0) */}
           <mesh position={[0, -0.6, 0]}>
             <cylinderGeometry args={[0.2, 0.2, 0.6, 8]} />
-            <meshStandardMaterial color="#5D4037" roughness={0.8} />
+            <meshStandardMaterial color="#5D4037" roughness={0.8} side={THREE.FrontSide} />
           </mesh>
           
           {/* Foliage layers - ĐIỀU CHỈNH: điều chỉnh vị trí tương ứng */}
           <mesh position={[0, 0.0, 0]}>
             <coneGeometry args={[0.7, 1.2, 8]} />
-            <meshStandardMaterial color="#2E7D32" roughness={0.7} />
+            <meshStandardMaterial color="#2E7D32" roughness={0.7} side={THREE.FrontSide} />
           </mesh>
           <mesh position={[0, 0.4, 0]}>
             <coneGeometry args={[0.5, 0.8, 8]} />
-            <meshStandardMaterial color="#388E3C" roughness={0.7} />
+            <meshStandardMaterial color="#388E3C" roughness={0.7} side={THREE.FrontSide} />
           </mesh>
           <mesh position={[0, 0.7, 0]}>
             <coneGeometry args={[0.3, 0.5, 8]} />
-            <meshStandardMaterial color="#43A047" roughness={0.7} />
+            <meshStandardMaterial color="#43A047" roughness={0.7} side={THREE.FrontSide} />
           </mesh>
         </>
       )}
@@ -62,13 +62,13 @@ const Tree: React.FC<TreeProps> = ({
           {/* Trunk - ĐIỀU CHỈNH: di chuyển phần thân xuống dưới điểm gốc */}
           <mesh position={[0, -0.7, 0]}>
             <cylinderGeometry args={[0.25, 0.3, 1.0, 8]} />
-            <meshStandardMaterial color="#795548" roughness={0.8} />
+            <meshStandardMaterial color="#795548" roughness={0.8} side={THREE.FrontSide} />
           </mesh>
           
           {/* Foliage - ĐIỀU CHỈNH: điều chỉnh vị trí tương ứng */}
           <mesh position={[0, 0.1, 0]}>
             <sphereGeometry args={[0.8, 8, 8]} />
-            <meshStandardMaterial color="#4CAF50" roughness={0.7} />
+            <meshStandardMaterial color="#4CAF50" roughness={0.7} side={THREE.FrontSide} />
           </mesh>
         </>
       )}
@@ -78,13 +78,13 @@ const Tree: React.FC<TreeProps> = ({
           {/* Trunk - ĐIỀU CHỈNH: di chuyển phần thân xuống dưới điểm gốc */}
           <mesh position={[0, -0.7, 0]}>
             <cylinderGeometry args={[0.15, 0.18, 1.4, 8]} />
-            <meshStandardMaterial color="#E0E0E0" roughness={0.6} />
+            <meshStandardMaterial color="#E0E0E0" roughness={0.6} side={THREE.FrontSide} />
           </mesh>
           
           {/* Foliage - ĐIỀU CHỈNH: điều chỉnh vị trí tương ứng */}
           <mesh position={[0, 0.2, 0]}>
             <sphereGeometry args={[0.6, 8, 8]} />
-            <meshStandardMaterial color="#81C784" roughness={0.7} />
+            <meshStandardMaterial color="#81C784" roughness={0.7} side={THREE.FrontSide} />
           </mesh>
         </>
       )}
@@ -118,4 +118,4 @@ export const Trees: React.FC<TreesProps> = ({ trees }) => {
   );
 };
 
-export default Tree;
+export default memo(Tree);

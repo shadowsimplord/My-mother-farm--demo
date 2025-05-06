@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, memo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -219,4 +219,4 @@ const SelectionIndicator: React.FC<SelectionIndicatorProps> = ({
   );
 };
 
-export default SelectionIndicator;
+export default memo(SelectionIndicator);

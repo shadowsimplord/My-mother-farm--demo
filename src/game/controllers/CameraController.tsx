@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Vector3, Quaternion } from 'three';
 import { easing } from 'maath';
@@ -67,6 +67,7 @@ const CameraController: React.FC<CameraControllerProps> = ({
   const { camera, controls } = useThree();
   const [currentView, setCurrentView] = useState<string>(initialViewId);
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  const lastUpdateRef = useRef<number>(0); // Throttle update
   
   // Référence pour suivre la progression de la transition
   const transitionRef = useRef({
@@ -111,9 +112,14 @@ const CameraController: React.FC<CameraControllerProps> = ({
   // Animation fluide de la caméra
   useFrame((_, delta) => {
     if (transitionRef.current.isActive) {
+      // Throttle: chỉ update tối đa 40 lần/giây
+      const now = performance.now();
+      if (now - lastUpdateRef.current < 25) return;
+      lastUpdateRef.current = now;
+
       // Mettre à jour la progression
       transitionRef.current.progress = Math.min(
-        (performance.now() - transitionRef.current.startTime) / (transitionRef.current.duration * 1000),
+        (now - transitionRef.current.startTime) / (transitionRef.current.duration * 1000),
         1.0
       );
       
@@ -138,15 +144,14 @@ const CameraController: React.FC<CameraControllerProps> = ({
       
       camera.lookAt(tempLookAt);
       
-      // Mettre à jour les contrôles si disponibles
+      // Chỉ update controls nếu có
       if (controls && 'target' in controls && 'update' in controls) {
-        // Sử dụng thuộc tính target và update an toàn
         (controls as ControlsType).target?.copy(tempLookAt);
         (controls as ControlsType).update?.();
       }
       
-      // Vérifier si la transition est terminée
-      if (t >= 1.0) {
+      // Kết thúc transition chỉ setState 1 lần
+      if (t >= 1.0 && isTransitioning) {
         transitionRef.current.isActive = false;
         setIsTransitioning(false);
       }

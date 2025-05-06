@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 
 interface DevToolsProps {
   visible: boolean;
@@ -142,4 +142,4 @@ const DevTools: React.FC<DevToolsProps> = ({ visible, setVisible }) => {
   );
 };
 
-export default DevTools;
+export default memo(DevTools);
