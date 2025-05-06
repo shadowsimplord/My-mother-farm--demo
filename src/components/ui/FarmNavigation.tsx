@@ -1,131 +1,226 @@
-import React, { useState, useEffect, memo } from 'react';
-import { FARM_VIEWPOINTS } from '../../game/controllers/CameraController';
+import React, { useEffect, useState } from 'react';
+import { CameraPosition } from '../../game/controllers/CameraController';
 
 interface FarmNavigationProps {
-  position?: 'top' | 'left' | 'right' | 'bottom';
+  position?: 'left' | 'right';
 }
 
-const FarmNavigation: React.FC<FarmNavigationProps> = ({ position = 'right' }) => {
-  const [activeViewId, setActiveViewId] = useState<string>('overview');
-  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
-  
+const FarmNavigation: React.FC<FarmNavigationProps> = ({ position = 'left' }) => {
+  const [viewpoints, setViewpoints] = useState<CameraPosition[]>([]);
+  const [currentView, setCurrentView] = useState<string>('overview');
+  const [isVisible, setIsVisible] = useState(true);
+
+  // Lấy các viewpoints từ CameraController khi component mount
   useEffect(() => {
+    // Kiểm tra controller và lấy viewpoints
+    const getControllerData = () => {
+      if (window.farmCameraController) {
+        console.log('[FarmNavigation] Fetching viewpoints from controller');
+        try {
+          // Lọc các viewpoints để đảm bảo chỉ hiển thị những viewpoint có tên
+          const filteredViewpoints = window.farmCameraController.getViewpoints().filter(
+            (view) => view.name && view.id
+          );
+          setViewpoints(filteredViewpoints);
+          
+          // Get current view - safely handle errors
+          try {
+            const currentViewId = window.farmCameraController.getCurrentView();
+            setCurrentView(currentViewId);
+          } catch (e) {
+            console.warn('[FarmNavigation] Could not get current view:', e);
+          }
+          
+          // Successfully connected
+          return true;
+        } catch (e) {
+          console.warn('[FarmNavigation] Error accessing controller methods:', e);
+          return false;
+        }
+      } else {
+        console.log('[FarmNavigation] Controller not available yet, retrying in 1s');
+        return false;
+      }
+    };
+    
+    // Try to get controller data immediately
+    if (!getControllerData()) {
+      // If failed, set up polling with a max number of retries
+      let retries = 0;
+      const maxRetries = 10;
+      const interval = setInterval(() => {
+        if (getControllerData() || retries >= maxRetries) {
+          clearInterval(interval);
+        }
+        retries++;
+      }, 1000);
+    }
+    
+    // Lắng nghe sự kiện khi view thay đổi để cập nhật UI
     const handleViewChanging = (e: CustomEvent) => {
       if (e.detail && e.detail.toViewId) {
-        setActiveViewId(e.detail.toViewId);
-        setIsTransitioning(true);
-        
-        // Reset transitioning state after animation completes
-        setTimeout(() => setIsTransitioning(false), 2000);
+        console.log(`[FarmNavigation] View changing to: ${e.detail.toViewId}`);
+        setCurrentView(e.detail.toViewId);
+      }
+    };
+    
+    const handleViewChanged = (e: CustomEvent) => {
+      if (e.detail && e.detail.viewId) {
+        console.log(`[FarmNavigation] View changed to: ${e.detail.viewId}`);
+        setCurrentView(e.detail.viewId);
       }
     };
     
     window.addEventListener('view-changing', handleViewChanging as EventListener);
+    window.addEventListener('view-changed', handleViewChanged as EventListener);
     
     return () => {
       window.removeEventListener('view-changing', handleViewChanging as EventListener);
+      window.removeEventListener('view-changed', handleViewChanged as EventListener);
     };
   }, []);
-  
-  const navigateToView = (viewId: string) => {
-    if (window.farmCameraController && !isTransitioning) {
-      window.farmCameraController.goToView(viewId);
+
+  // Xử lý khi chọn view
+  const handleViewSelect = (viewId: string) => {
+    console.log(`[FarmNavigation] Selected view: ${viewId}`);
+    if (window.farmCameraController) {
+      try {
+        window.farmCameraController.goToView(viewId);
+      } catch (e) {
+        console.error('[FarmNavigation] Error calling goToView:', e);
+        // Fallback to event if method call fails
+        window.dispatchEvent(new CustomEvent('change-view', {
+          detail: { viewId }
+        }));
+      }
+    } else {
+      console.error('[FarmNavigation] farmCameraController is not available');
+      // Dispatch event for CameraController to handle
+      window.dispatchEvent(new CustomEvent('change-view', {
+        detail: { viewId }
+      }));
     }
   };
-  
-  // Określ style na podstawie pozycji
+
+  // Tạo icon dựa trên ID của viewpoint
+  const getIconForView = (viewId: string): string => {
+    switch(viewId.toLowerCase()) {
+      case 'overview': return '🔍';
+      case 'house': return '🏠';
+      case 'coffee': case 'coffeearea': return '☕';
+      case 'cherry': case 'cherryarea': return '🍒';
+      case 'forest': return '🌳';
+      case 'corn': case 'cornarea': return '🌽';
+      default: return '📍';
+    }
+  };
+
+  // Thiết lập style cho menu navigation
   const containerStyle: React.CSSProperties = {
     position: 'absolute',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    [position]: '20px',
+    background: 'rgba(255, 255, 255, 0.9)',
+    backdropFilter: 'blur(10px)',
+    padding: '15px',
+    borderRadius: '12px',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
     zIndex: 100,
     display: 'flex',
+    flexDirection: 'column',
     gap: '10px',
-    padding: '15px',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: position === 'left' || position === 'right' ? '12px' : '0',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    backdropFilter: 'blur(4px)',
-    transition: 'all 0.3s ease',
+    transition: 'opacity 0.3s ease',
+    opacity: isVisible ? 1 : 0.3,
   };
-  
-  // Dostosuj pozycję
-  switch (position) {
-    case 'top':
-      containerStyle.top = '20px';
-      containerStyle.left = '50%';
-      containerStyle.transform = 'translateX(-50%)';
-      containerStyle.flexDirection = 'row';
-      containerStyle.borderRadius = '0 0 12px 12px';
-      break;
-    case 'left':
-      containerStyle.left = '20px';
-      containerStyle.top = '50%';
-      containerStyle.transform = 'translateY(-50%)';
-      containerStyle.flexDirection = 'column';
-      break;
-    case 'right':
-      containerStyle.right = '20px';
-      containerStyle.top = '50%';
-      containerStyle.transform = 'translateY(-50%)';
-      containerStyle.flexDirection = 'column';
-      break;
-    case 'bottom':
-      containerStyle.bottom = '20px';
-      containerStyle.left = '50%';
-      containerStyle.transform = 'translateX(-50%)';
-      containerStyle.flexDirection = 'row';
-      containerStyle.borderRadius = '12px 12px 0 0';
-      break;
+
+  const buttonBaseStyle: React.CSSProperties = {
+    padding: '12px 15px',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontWeight: 500,
+    fontSize: '14px',
+    transition: 'all 0.3s ease',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    width: '100%',
+  };
+
+  // Nút toggle hiển thị
+  const toggleButton: React.CSSProperties = {
+    position: 'absolute',
+    bottom: '-40px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: '0 0 8px 8px',
+    width: '30px',
+    height: '30px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    cursor: 'pointer',
+    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+    border: 'none',
+  };
+
+  // Kiểm tra xem có viewpoints để hiển thị không
+  if (viewpoints.length === 0) {
+    return null; // Không render gì nếu không có viewpoints
   }
-  
+
+  // Thiết kế các button với animation mượt mà
   return (
-    <div style={containerStyle}>
-      {FARM_VIEWPOINTS.map((viewpoint) => (
-        <div 
-          key={viewpoint.id} 
-          onClick={() => navigateToView(viewpoint.id)}
+    <div 
+      style={containerStyle} 
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      {viewpoints.map((view) => (
+        <button
+          key={view.id}
+          onClick={() => handleViewSelect(view.id)}
           style={{
-            padding: '10px 15px',
-            backgroundColor: activeViewId === viewpoint.id ? '#4CAF50' : 'transparent',
-            color: activeViewId === viewpoint.id ? 'white' : '#333',
-            borderRadius: '8px',
-            cursor: isTransitioning ? 'wait' : 'pointer',
-            transition: 'all 0.3s ease',
-            fontWeight: activeViewId === viewpoint.id ? 'bold' : 'normal',
-            opacity: isTransitioning && activeViewId !== viewpoint.id ? 0.5 : 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            boxShadow: activeViewId === viewpoint.id ? '0 2px 4px rgba(0, 0, 0, 0.2)' : 'none',
+            ...buttonBaseStyle,
+            backgroundColor: currentView === view.id 
+              ? '#4CAF50' 
+              : 'rgba(255, 255, 255, 0.7)',
+            color: currentView === view.id 
+              ? 'white' 
+              : '#333',
+            transform: 'scale(1)',
           }}
+          onMouseEnter={(e) => {
+            const target = e.currentTarget as HTMLButtonElement;
+            target.style.backgroundColor = currentView === view.id 
+              ? '#45a049' 
+              : 'rgba(240, 240, 240, 0.9)';
+            target.style.transform = 'scale(1.03)';
+          }}
+          onMouseLeave={(e) => {
+            const target = e.currentTarget as HTMLButtonElement;
+            target.style.backgroundColor = currentView === view.id 
+              ? '#4CAF50' 
+              : 'rgba(255, 255, 255, 0.7)';
+            target.style.transform = 'scale(1)';
+          }}
+          title={view.description || view.name}
         >
-          <div style={{ fontWeight: 'bold' }}>{viewpoint.name}</div>
-          {activeViewId === viewpoint.id && viewpoint.description && (
-            <div 
-              style={{ 
-                fontSize: '0.8rem', 
-                maxWidth: '150px',
-                textAlign: 'center',
-                marginTop: '5px',
-                animation: 'fadeIn 0.5s ease',
-              }}
-            >
-              {viewpoint.description}
-            </div>
-          )}
-        </div>
+          <span style={{ fontSize: '18px' }}>{getIconForView(view.id)}</span> {view.name}
+        </button>
       ))}
-      
-      {/* Thay thế style jsx="true" bằng style thông thường */}
-      <style>
-        {`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        `}
-      </style>
+      <button 
+        style={toggleButton}
+        onClick={() => setIsVisible(!isVisible)}
+        title={isVisible ? 'Thu gọn' : 'Mở rộng'}
+      >
+        {isVisible ? '▼' : '▲'}
+      </button>
     </div>
   );
 };
 
-export default memo(FarmNavigation);
+export default FarmNavigation;

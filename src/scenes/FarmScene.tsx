@@ -1,513 +1,56 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
-import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
-import { OrbitControls, Sky, Environment } from '@react-three/drei';
-import * as THREE from 'three';
-import Terrain from '../game/world/Terrain';
-import { Trees } from '../game/objects/Tree';
-import House from '../game/objects/House';
-import { CoffeeTrees } from '../game/objects/FruitTrees/CoffeeTree';
-import { CherryTrees } from '../game/objects/FruitTrees/CherryTree';
-import { CornPlants } from '../game/objects/FruitTrees/CornPlant';
-import { TreeData, TreeType, TreeInfo } from '../game/types';
-import fruitTreesData from '../game/systems/data/FruitTreesdata.json';
-import objectData from '../game/systems/data/FruitTreesdata.json';
-import CameraController from '../game/controllers/CameraController';
-import FarmNavigation from '../components/ui/FarmNavigation';
+import { OrbitControls } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
+import * as THREE from 'three'
+import { useEffect } from 'react'
 
-import DevTools from '../components/controls/DevTools';
+import FarmTerrain from '../game/components/farm/FarmTerrain'
+import FarmEnvironment from '../game/components/farm/FarmEnvironment' 
+import FruitTreesCollection from '../game/objects/FruitTrees/FruitTreesCollection'
+import CoordinateAxes from '../game/components/helpers/CoordinateAxes'
+import OriginPoint from '../game/components/helpers/OriginPoint'
+import CameraController from '../game/controllers/CameraController'
 
-// Debounce helper
-function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
-  let timeout: ReturnType<typeof setTimeout>;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => fn(...args), delay);
-  };
-}
-
-// Component cho AxesHelper - hiển thị trục tọa độ 3D (X, Y, Z)
-const CoordinateAxes = ({ size = 10, visible = false }) => {
-  const axesRef = useRef<THREE.AxesHelper>(null);
+// Component con này sẽ được render bên trong Canvas
+function FarmSceneContent() {
+  const { scene, camera, gl } = useThree()
   
-  // Lắng nghe sự kiện toggle-axes để hiển thị/ẩn axes helper
+  scene.background = new THREE.Color('#b0e0f7')
+  gl.toneMapping = THREE.LinearToneMapping
+  
+  // Set initial position immediately to avoid flicker
   useEffect(() => {
-    const handleToggleAxes = (e: CustomEvent<{visible: boolean}>) => {
-      if (axesRef.current) {
-        axesRef.current.visible = e.detail.visible;
-      }
-    };
-    
-    window.addEventListener('toggle-axes', handleToggleAxes as EventListener);
-    
-    return () => {
-      window.removeEventListener('toggle-axes', handleToggleAxes as EventListener);
-    };
-  }, []);
-
-  return <axesHelper ref={axesRef} args={[size]} visible={visible} />;
-};
-
-// Component hiển thị điểm gốc tọa độ (0, 0, 0)
-const OriginPoint = ({ size = 0.2, visible = false }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  
-  // Lắng nghe sự kiện toggle-axes để hiển thị/ẩn điểm gốc tọa độ
-  useEffect(() => {
-    const handleToggleAxes = (e: CustomEvent<{visible: boolean}>) => {
-      if (meshRef.current) {
-        meshRef.current.visible = e.detail.visible;
-      }
-    };
-    
-    window.addEventListener('toggle-axes', handleToggleAxes as EventListener);
-    
-    return () => {
-      window.removeEventListener('toggle-axes', handleToggleAxes as EventListener);
-    };
-  }, []);
-
-  return (
-    <mesh ref={meshRef} visible={visible} position={[0, 0, 0]}>
-      <sphereGeometry args={[size, 16, 16]} />
-      <meshBasicMaterial color="#ffffff" />
-    </mesh>
-  );
-};
-
-// Cập nhật interface TreeInfoExtended bao gồm các trường bổ sung
-interface TreeInfoExtended extends TreeInfo {
-  owner?: string;
-  leasePeriod?: string;
-}
-
-// Main component that sets up the Canvas
-const FarmScene: React.FC = () => {
-  // Trạng thái hiển thị DevTools
-  const [devToolsVisible, setDevToolsVisible] = useState(false);
-  const [selectedTree, setSelectedTree] = useState<TreeInfoExtended | null>(null);
-  const [hoverTreePosition, setHoverTreePosition] = useState<[number, number, number] | null>(null);
-  
-  // Debounced setter for hover position
-  const debouncedSetHoverTreePosition = useRef(
-    debounce((pos: [number, number, number] | null) => {
-      setHoverTreePosition(pos);
-    }, 24) // ~40fps
-  ).current;
-
-  // Hàm đóng bảng thông tin, khi đóng cũng sẽ xóa hiệu ứng hover
-  const handleCloseInfoPanel = () => {
-    setSelectedTree(null);
-    // Đồng thời xóa hiệu ứng hover trên cây
-    setHoverTreePosition(null);
-  };
+    camera.position.set(15, 15, 15)
+    camera.lookAt(new THREE.Vector3(0, 0, 0))
+  }, [camera])
   
   return (
     <>
-      <Canvas
-        shadows
-        camera={{ position: [0, 0, 0], fov: 50 }}
-        style={{ width: '100vw', height: '100vh' }}
-      >
-        <FarmSceneContent 
-          onSelectTree={(tree) => setSelectedTree(tree)} 
-          hoverTreePosition={hoverTreePosition}
-          setHoverTreePosition={debouncedSetHoverTreePosition}
-        />
-      </Canvas>
+      <CameraController initialViewId="overview" transitionDuration={1.5} />
       
-      {/* Dodaj nawigację farmy po prawej stronie */}
-      <FarmNavigation position="right" />
-      
-      {/* Developer Tools - đã di chuyển ra bên ngoài Canvas */}
-      <DevTools visible={devToolsVisible} setVisible={setDevToolsVisible} />
-      
-      {/* NFT Tree Info Panel */}
-      {selectedTree && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          right: 20,
-          transform: 'translateY(-50%)',
-          width: '300px',
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(0, 128, 0, 0.3)',
-          borderRadius: 12,
-          padding: 20,
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-          zIndex: 1000,
-          fontFamily: 'Arial, sans-serif',
-          color: '#333'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderBottom: '2px solid #4CAF50',
-            paddingBottom: 10,
-            marginBottom: 15
-          }}>
-            <h2 style={{ margin: 0, color: '#2E7D32', fontSize: '1.4rem' }}>
-              {selectedTree.type === 'cherry' ? 'Cây Anh Đào ' : 
-               selectedTree.type === 'corn' ? 'Cây Ngô ' : 
-               'Cây Cà Phê '}
-            </h2>
-            <button 
-              onClick={handleCloseInfoPanel}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '1.2rem',
-                cursor: 'pointer',
-                color: '#777'
-              }}
-            >
-              ✕
-            </button>
-          </div>
-          
-          <div style={{ margin: '15px 0' }}>
-            <div style={{ 
-              background: getStatusColor(selectedTree.status), 
-              color: '#fff', 
-              padding: '8px 12px', 
-              borderRadius: '20px',
-              display: 'inline-block',
-              marginBottom: '12px',
-              fontSize: '0.9rem',
-              fontWeight: 'bold'
-            }}>
-              {getStatusLabel(selectedTree.status)}
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', rowGap: '10px' }}>
-              <div style={{ fontWeight: 'bold', color: '#555' }}>ID:</div>
-              <div style={{ color: '#000' }}>{selectedTree.id}</div>
-              
-              <div style={{ fontWeight: 'bold', color: '#555' }}>Tuổi cây:</div>
-              <div style={{ color: '#000' }}>{selectedTree.daysPlanted} ngày</div>
-              
-              <div style={{ fontWeight: 'bold', color: '#555' }}>Năng suất:</div>
-              <div style={{ color: '#000' }}>{calculateYield(selectedTree)}%</div>
-              
-              <div style={{ fontWeight: 'bold', color: '#555' }}>Vị trí:</div>
-              <div style={{ color: '#000', fontSize: '0.9rem' }}>[{selectedTree.position?.map((p: number) => Math.round(p * 100) / 100).join(', ')}]</div>
-            </div>
-          </div>
-          
-          <div style={{
-            background: '#f5f5f5',
-            borderRadius: 8,
-            padding: 12,
-            marginTop: 15
-          }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: '#333' }}>
-              Thông tin NFT
-            </h3>
-            <div style={{ fontSize: '0.9rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span>Chủ sở hữu:</span>
-                <span style={{ fontWeight: 'bold', color: '#1976D2' }}>
-                  {selectedTree.owner || 'MyMotherFarm'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span>Giá thuê:</span>
-                <span style={{ fontWeight: 'bold', color: '#388E3C' }}>
-                  {calculatePrice(selectedTree)} USDT/tháng
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Thời hạn:</span>
-                <span style={{ fontWeight: 'bold' }}>
-                  {selectedTree.leasePeriod || '12 tháng'}
-                </span>
-              </div>
-            </div>
-          </div>
-          
-          <div style={{ marginTop: 20, display: 'flex', gap: 10 }}>
-            <button style={{
-              flex: 1,
-              padding: '10px 0',
-              background: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}>
-              Thuê Cây
-            </button>
-            <button style={{
-              flex: 1,
-              padding: '10px 0',
-              background: '#FFA000',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}>
-              Chi tiết
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
-
-// Cập nhật interface cho FarmSceneContent để nhận thêm props
-interface FarmSceneContentProps {
-  onSelectTree: (tree: TreeInfoExtended | null) => void;
-  hoverTreePosition: [number, number, number] | null;
-  setHoverTreePosition: React.Dispatch<React.SetStateAction<[number, number, number] | null>>;
-}
-
-// Cập nhật component Farm Scene Content
-export const FarmSceneContent: React.FC<FarmSceneContentProps> = ({ 
-  onSelectTree,
-  hoverTreePosition,
-  setHoverTreePosition
-}) => {
-  const { camera, raycaster, scene, mouse } = useThree();
-  const terrainRef = useRef<THREE.Mesh>(null);
-  const [useHeightmap] = useState<boolean>(true); // Xóa setter không dùng nữa
-  const [trees, setTrees] = useState<TreeData[]>([]);
-  
-  // Set initial camera position
-  useEffect(() => {
-    camera.position.set(15, 15, 15);
-    camera.lookAt(0, 0, 0);
-  }, [camera]);
-
-  // Handle tree selection directly
-  const handleSelectTree = (tree: TreeInfoExtended | null) => {
-    console.log("Tree clicked:", tree);
-    if (tree) {
-      // Pass tree data to parent component
-      onSelectTree(tree);
-    } else {
-      onSelectTree(null);
-    }
-  };
-
-  // Hàm xử lý hover vào cây - chỉ setState khi thực sự thay đổi
-  const handleTreeHover = useCallback((info: TreeInfo, isHovering: boolean) => {
-    if (isHovering) {
-      if (!hoverTreePosition ||
-        Math.abs(hoverTreePosition[0] - info.position[0]) > 0.01 ||
-        Math.abs(hoverTreePosition[1] - info.position[1]) > 0.01 ||
-        Math.abs(hoverTreePosition[2] - info.position[2]) > 0.01) {
-        setHoverTreePosition([...info.position]);
-      }
-    } else {
-      if (hoverTreePosition &&
-        Math.abs(hoverTreePosition[0] - info.position[0]) < 0.1 &&
-        Math.abs(hoverTreePosition[1] - info.position[1]) < 0.1 &&
-        Math.abs(hoverTreePosition[2] - info.position[2]) < 0.1) {
-        setHoverTreePosition(null);
-      }
-    }
-  }, [hoverTreePosition, setHoverTreePosition]);
-
-  // Thay đổi đoạn code tạo cây để sử dụng vị trí cố định thay vì raycasting
-  useEffect(() => {
-    if (terrainRef.current) {
-      console.log("FarmScene: Loading fixed tree positions from objectData");
-      
-      // Sử dụng vị trí cố định từ objectData
-      const fixedTrees: TreeData[] = objectData.map(tree => {
-        return {
-          position: [...tree.position] as [number, number, number],
-          rotation: [0, 0, 0],
-          scale: 1.0,
-          type: tree.type as TreeType
-        };
-      });
-      
-      console.log(`Loaded ${fixedTrees.length} trees with predefined positions`);
-      setTrees(fixedTrees);
-    }
-  }, []);
-
-  // Animation loop - Cập nhật vị trí camera và gửi thông tin đến DevTools - đã khôi phục về mặc định
-  useFrame(() => {
-    // Gửi thông tin vị trí camera cho DevTools (mỗi frame)
-    window.dispatchEvent(new CustomEvent('camera-update', { 
-      detail: { 
-        camera: { 
-          x: camera.position.x,
-          y: camera.position.y,
-          z: camera.position.z
-        } 
-      } 
-    }));
-  });
-
-  // Xử lý click vào scene
-  const handleSceneClick = (event: ThreeEvent<MouseEvent>) => {
-    // Ngăn bubbling để không bị double handling
-    event.stopPropagation();
-    
-    // Tính toán điểm va chạm với địa hình
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(scene.children, true);
-    
-    if (intersects.length > 0) {
-      const point = intersects[0].point;
-      
-      // Gửi thông tin điểm click cho DevTools
-      window.dispatchEvent(new CustomEvent('scene-click', { 
-        detail: { 
-          point: { 
-            x: point.x,
-            y: point.y,
-            z: point.z 
-          } 
-        } 
-      }));
-    }
-  };
-
-  return (
-    <>
-      {/* Dodaj kontroler kamery dla płynnej animacji */}
-      <CameraController initialViewId="overview" transitionDuration={2.0} />
-      
-      {/* Lighting */}
-      <ambientLight intensity={0.5} />
-      <directionalLight 
-        position={[10, 15, 5]} 
-        intensity={1} 
-        castShadow={true} 
-        shadow-mapSize={[2048, 2048]}
-      />
-      
-      <Sky sunPosition={[100, 10, 100]} />
-      <Environment preset="sunset" />
-      
+      <FarmEnvironment />
+      <FarmTerrain />
+      <FruitTreesCollection />
       <CoordinateAxes size={50} visible={false} />
       <OriginPoint size={0.3} visible={false} />
       
-      <Terrain 
-        ref={terrainRef} 
-        onClick={(e: any) => handleSceneClick(e)} 
-        useHeightmap={useHeightmap} 
-      />
-      
-      <House position={[-2.62, -1.97, -1.05]} rotation={[0, Math.PI / 2, 0]} scale={1.5} />
-      
-      {trees.length > 0 && <Trees trees={trees} />}
-      
-      {fruitTreesData && (
-        <>
-          <CoffeeTrees 
-            trees={fruitTreesData
-              .filter(tree => tree.type === 'coffee-tree')
-              .map((tree, index) => ({
-                ...tree,
-                id: tree.id || `coffee-${index}-${Date.now()}`, // Đảm bảo ID luôn duy nhất
-                position: tree.position as [number, number, number]
-              }))} 
-            onTreeClick={(info) => {
-              console.log("Coffee tree clicked:", info);
-              handleSelectTree(info);
-            }}
-            onTreeHover={(info, isHovering) => handleTreeHover(info, isHovering)}
-          />
-          <CherryTrees 
-            trees={fruitTreesData
-              .filter(tree => tree.type === 'cherry')
-              .map((tree, index) => ({
-                ...tree,
-                id: tree.id || `cherry-${index}-${Date.now()}`, // Đảm bảo ID luôn duy nhất
-                position: tree.position as [number, number, number]
-              }))}
-            onTreeClick={(info) => {
-              console.log("Cherry tree clicked:", info);
-              handleSelectTree(info);
-            }}
-            onTreeHover={(info, isHovering) => handleTreeHover(info, isHovering)}
-          />
-          
-          <CornPlants
-            plants={fruitTreesData
-              .filter(tree => tree.type === 'corn')
-              .map((tree, index) => ({
-                ...tree,
-                id: tree.id || `corn-${index}-${Date.now()}`, // Đảm bảo ID luôn duy nhất
-                position: tree.position as [number, number, number]
-              }))}
-            onPlantClick={(info) => {
-              console.log("Corn plant clicked:", info);
-              handleSelectTree(info);
-            }}
-            onPlantHover={(info, isHovering) => handleTreeHover(info, isHovering)}
-          />
-        </>
-      )}
-      
-      {/* Zaktualizuj OrbitControls, aby współpracował z CameraController */}
-      <OrbitControls 
+      <OrbitControls
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
         maxPolarAngle={Math.PI / 2.2}
         makeDefault
         enableDamping
-        dampingFactor={0.05}
+        dampingFactor={0.1}
+        rotateSpeed={0.7}
+        zoomSpeed={1.5}
+        minDistance={3}
+        maxDistance={50}
       />
     </>
-  );
-};
-
-// Các hàm helper để tính toán và hiển thị thông tin cây
-function getStatusColor(status?: string): string {
-  switch (status?.toLowerCase()) {
-    case 'good': return '#4CAF50'; // Xanh lá - cây khỏe mạnh
-    case 'normal': return '#00c3ff'; // Cam - cây bình thường
-    case 'bad': return '#F44336'; // Đỏ - cây không khỏe
-    default: return '#9E9E9E'; // Xám - không có thông tin
-  }
+  )
 }
 
-function getStatusLabel(status?: string): string {
-  switch (status?.toLowerCase()) {
-    case 'good': return '✅ Khỏe Mạnh';
-    case 'normal': return ' Bình Thường';
-    case 'bad': return '⚠️ Cần Chăm Sóc';
-    default: return '❓ Không Xác Định';
-  }
+// Component chính không sử dụng useThree
+export default function FarmScene() {
+  return <FarmSceneContent />
 }
-
-function calculateYield(tree: TreeInfoExtended): number {
-  // Tính năng suất dựa trên tuổi cây và trạng thái
-  const baseYield = tree.daysPlanted ? 
-    (tree.daysPlanted < 5 ? 0 : 
-     tree.daysPlanted < 10 ? 30 : 
-     tree.daysPlanted < 30 ? 70 : 100) : 0;
-  
-  // Điều chỉnh dựa trên trạng thái
-  switch (tree.status?.toLowerCase()) {
-    case 'good': return baseYield;
-    case 'normal': return Math.floor(baseYield * 0.8);
-    case 'bad': return Math.floor(baseYield * 0.5);
-    default: return baseYield;
-  }
-}
-
-function calculatePrice(tree: TreeInfoExtended): number {
-  // Tính giá thuê dựa trên loại cây và năng suất
-  const basePrice = tree.type === 'cherry' ? 12 : 9; // Giá cơ bản: Cherry đắt hơn Coffee
-  
-  // Điều chỉnh theo năng suất
-  const yield_ = calculateYield(tree);
-  const yieldFactor = yield_ / 100;
-  
-  // Tính giá cuối cùng (làm tròn đến 1 số thập phân)
-  return Math.round((basePrice * (0.7 + yieldFactor * 0.3)) * 10) / 10;
-}
-
-export default FarmScene;

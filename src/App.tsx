@@ -1,10 +1,13 @@
 import './App.css'
 import FarmScene from './scenes/FarmScene'
+import FarmUI from './scenes/FarmUI'
 
 function App() {
   return (
     <div className="App">
-      <FarmScene />
+      <FarmUI>
+        <FarmScene />
+      </FarmUI>
     </div>
   )
 }
