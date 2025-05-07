@@ -6,7 +6,7 @@ import { useState } from 'react'
 import DevTools from './devtools/DevTools'
 
 // Để tắt DevTools hoàn toàn, đặt thành false
-export const ENABLE_DEV_TOOLS = false;
+export const ENABLE_DEV_TOOLS = true;
 
 function App() {
   // Chỉ tạo state khi DevTools được bật

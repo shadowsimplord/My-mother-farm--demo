@@ -242,6 +242,7 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
   return (
     <mesh 
       ref={ref}
+      name="terrain-mesh"
       geometry={geometry} 
       rotation={[-Math.PI / 2, 0, 0]} 
       receiveShadow

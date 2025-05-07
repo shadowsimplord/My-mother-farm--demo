@@ -79,7 +79,7 @@ interface CameraControllerProps {
 
 const CameraController: React.FC<CameraControllerProps> = ({
   initialViewId = 'overview',
-  transitionDuration = 2.0
+  transitionDuration = 3.8
 }) => {
   const { camera, controls } = useThree();
   const [currentView, setCurrentView] = useState<string>(initialViewId);

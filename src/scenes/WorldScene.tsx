@@ -9,11 +9,15 @@ import FruitTreesCollection from '../game/objects/FruitTrees/FruitTreesCollectio
 import CameraController from '../game/controllers/CameraController'
 import { usePositionTracker, GroundClickDetector } from '../game/components/helpers/PositionTracker'
 import DevToolsComponents from '../game/components/helpers/DevToolsComponents'
+import { useGroundHeightLimiter } from '../hooks/useGroundHeightLimiter'
 
 // Component con này sẽ được render bên trong Canvas
 function WorldSceneContent() {
   const { scene, camera, gl } = useThree();
   const { handleClick } = usePositionTracker();
+  
+  // Sử dụng hook để giới hạn độ cao camera so với mặt đất
+  useGroundHeightLimiter(1.0);
   
   scene.background = new THREE.Color('#b0e0f7')
   gl.toneMapping = THREE.LinearToneMapping
