@@ -63,33 +63,5 @@
     "daysPlanted": 10,
     "position": [10, -2, 8],
     "status": "good"
-  },
-  {
-    "id": "corn2",
-    "type": "corn",
-    "daysPlanted": 5,
-    "position": [9, -2, 8],
-    "status": "normal"
-  },
-  {
-    "id": "corn3",
-    "type": "corn",
-    "daysPlanted": 15,
-    "position": [12, 1.38, 20],
-    "status": "good"
-  },
-  {
-    "id": "corn5",
-    "type": "corn",
-    "daysPlanted": 8,
-    "position": [12, -2, -6],
-    "status": "good"
-  },
-  {
-    "id": "corn6",
-    "type": "corn",
-    "daysPlanted": 8,
-    "position": [14, -2, -6],
-    "status": "good"
   }
 ]

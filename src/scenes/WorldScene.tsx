@@ -6,13 +6,14 @@ import { useEffect } from 'react'
 import FarmTerrain from '../game/components/farm/FarmTerrain'
 import FarmEnvironment from '../game/components/farm/FarmEnvironment' 
 import FruitTreesCollection from '../game/objects/FruitTrees/FruitTreesCollection'
-import CoordinateAxes from '../game/components/helpers/CoordinateAxes'
-import OriginPoint from '../game/components/helpers/OriginPoint'
 import CameraController from '../game/controllers/CameraController'
+import { usePositionTracker, GroundClickDetector } from '../game/components/helpers/PositionTracker'
+import DevToolsComponents from '../game/components/helpers/DevToolsComponents'
 
 // Component con này sẽ được render bên trong Canvas
-function FarmSceneContent() {
-  const { scene, camera, gl } = useThree()
+function WorldSceneContent() {
+  const { scene, camera, gl } = useThree();
+  const { handleClick } = usePositionTracker();
   
   scene.background = new THREE.Color('#b0e0f7')
   gl.toneMapping = THREE.LinearToneMapping
@@ -28,10 +29,15 @@ function FarmSceneContent() {
       <CameraController initialViewId="overview" transitionDuration={1.5} />
       
       <FarmEnvironment />
-      <FarmTerrain />
+      
+      {/* Plane không nhìn thấy để bắt sự kiện click trên nền */}
+      <GroundClickDetector />
+      
+      <FarmTerrain onClick={handleClick} />
       <FruitTreesCollection />
-      <CoordinateAxes size={50} visible={false} />
-      <OriginPoint size={0.3} visible={false} />
+      
+      {/* Các components DevTools */}
+      <DevToolsComponents />
       
       <OrbitControls
         enablePan={true}
@@ -51,6 +57,6 @@ function FarmSceneContent() {
 }
 
 // Component chính không sử dụng useThree
-export default function FarmScene() {
-  return <FarmSceneContent />
+export default function WorldScene() {
+  return <WorldSceneContent />
 }
