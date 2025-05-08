@@ -53,6 +53,13 @@ export const FARM_VIEWPOINTS: CameraPosition[] = [
     target: [0, 0, -20],
     name: 'Khu rừng',
     description: 'Khu rừng tự nhiên phía xa'
+  },
+  {
+    id: 'cornfield',
+    position: [18, 3, 8], // Đã cập nhật phù hợp với vị trí Field [15, -1.8, 5]
+    target: [15, -1.8, 5], // Target là vị trí chính xác của Field
+    name: 'Vườn ngô',
+    description: 'Khu vực trồng ngô xanh tốt'
   }
 ];
 

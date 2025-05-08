@@ -1,9 +1,8 @@
 import './App.css'
-import WorldScene from './scenes/WorldScene'
-import FarmUI from './scenes/FarmUI'
 import LoadingScreen from './components/ui/LoadingScreen'
 import { useState } from 'react'
 import DevTools from './devtools/DevTools'
+import { SceneRenderer } from './game/managers/SceneManager'
 
 // Để tắt DevTools hoàn toàn, đặt thành false
 export const ENABLE_DEV_TOOLS = true;
@@ -19,10 +18,9 @@ function App() {
         <DevTools visible={devToolsVisible} setVisible={setDevToolsVisible} />
       )}
       
+      {/* Loading screen for initial app load */}
       <LoadingScreen>
-        <FarmUI>
-          <WorldScene />
-        </FarmUI>
+        <SceneRenderer />
       </LoadingScreen>
     </div>
   )

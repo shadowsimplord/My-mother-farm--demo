@@ -3,6 +3,8 @@ import { TreeInfo } from '../types';
 export interface TreeInfoExtended extends TreeInfo {
   owner?: string;
   leasePeriod?: string;
+  health?: number;
+  lastWatered?: string;
 }
 
 export function getStatusColor(status?: string): string {

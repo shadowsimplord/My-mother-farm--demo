@@ -55,13 +55,7 @@
     "daysPlanted": 10,
     "position": [9, -2, -6],
     "status": "bad"
-  },
-
-  {
-    "id": "corn1",
-    "type": "corn",
-    "daysPlanted": 30,
-    "position": [10, -2, 8],
-    "status": "good"
   }
+
+ 
 ]

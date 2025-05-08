@@ -100,7 +100,8 @@ const CornPlant: React.FC<CornPlantProps> = ({
   const [isHovered, setIsHovered] = React.useState(false)
 
   // Load model với mã JSX được tạo bởi gltfjsx
-  const { nodes, materials } = useGLTF('/models/Corn_plant.glb') as GLTFResult
+  // Sửa lỗi type casting - chuyển đổi an toàn bằng cách sử dụng as unknown trước
+  const { nodes, materials } = useGLTF('/models/Corn_plant.glb') as unknown as GLTFResult
 
   // Tính toán hệ số tăng trưởng dựa trên số ngày đã trồng
   const growthFactor = Math.min(1, daysPlanted / 14)

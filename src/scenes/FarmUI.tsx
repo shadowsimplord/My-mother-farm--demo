@@ -3,20 +3,39 @@ import { TreeInfoExtended } from '../game/utils/treeInfoHelpers';
 import { debounce } from '../game/utils/debounce';
 import FarmNavigation from '../components/ui/FarmNavigation';
 import TreeInfoPanel from '../components/ui/TreeInfoPanel';
+import FieldInfoPanel from '../components/ui/FieldInfoPanel';
 import { Canvas } from '@react-three/fiber';
+import { SceneType } from '../game/managers/SceneManager';
 
 interface FarmUIProps {
   children?: React.ReactNode;
+  currentScene?: SceneType;
 }
 
-const FarmUI = ({ children }: FarmUIProps) => {
+// Định nghĩa interface cho window.farmUI trước để đồng bộ kiểu dữ liệu
+export interface FarmUIInterface {
+  setSelectedTree: (tree: TreeInfoExtended | null) => void;
+  setHoverTreePosition: (position: number[] | null) => void;
+  setSelectedField?: (selected: boolean) => void;
+}
+
+// Declare global interface cho window
+declare global {
+  interface Window {
+    farmUI?: FarmUIInterface;
+  }
+}
+
+const FarmUI = ({ children, currentScene = SceneType.FARM }: FarmUIProps) => {
   const [selectedTree, setSelectedTree] = useState<TreeInfoExtended | null>(null);
+  // Thêm state cho việc hiển thị bảng thông tin cánh đồng
+  const [showFieldInfo, setShowFieldInfo] = useState<boolean>(false);
   // Khai báo state để sử dụng trong UI indicators
-  const [, setHoverTreePosition] = useState<[number, number, number] | null>(null);
+  const [, setHoverTreePosition] = useState<number[] | null>(null);
   
   // Tối ưu: Tăng thời gian debounce và lưu trong useRef để tránh tạo function mới
   const debouncedSetHoverTreePosition = useRef(
-    debounce((pos: [number, number, number] | null) => {
+    debounce((pos: number[] | null) => {
       setHoverTreePosition(pos);
     }, 40) // Tăng từ 24 lên 40ms để giảm số lần update
   ).current;
@@ -25,12 +44,29 @@ const FarmUI = ({ children }: FarmUIProps) => {
     setSelectedTree(null);
     setHoverTreePosition(null);
   };
+  
+  // Xử lý đóng bảng thông tin cánh đồng
+  const handleCloseFieldInfo = () => {
+    setShowFieldInfo(false);
+  };
+  
+  // Xử lý khi bấm nút vào vườn ngô
+  const handleEnterCornGarden = () => {
+    console.log('[FarmUI] Entering corn garden');
+    setShowFieldInfo(false);
+    
+    // Gọi sự kiện chuyển scene
+    window.dispatchEvent(new CustomEvent('prepare-scene-transition', {
+      detail: { targetScene: 'corn-garden' }
+    }));
+  };
 
   // Export handlers to window for child components to use
   useEffect(() => {
     window.farmUI = {
       setSelectedTree,
-      setHoverTreePosition: debouncedSetHoverTreePosition
+      setHoverTreePosition: debouncedSetHoverTreePosition,
+      setSelectedField: setShowFieldInfo // Thêm handler mới
     };
     
     return () => {
@@ -38,7 +74,7 @@ const FarmUI = ({ children }: FarmUIProps) => {
     };
   }, [debouncedSetHoverTreePosition]);
 
-  // Tối ưu: Sử dụng Canvas với các props tối ưu
+
   return (
     <>
       <Canvas
@@ -61,22 +97,24 @@ const FarmUI = ({ children }: FarmUIProps) => {
        
       </Canvas>
       
-      <FarmNavigation position="right" />
+      {/* Chỉ hiển thị FarmNavigation khi ở trang trại chính */}
+      {currentScene === SceneType.FARM && <FarmNavigation position="right" />}
       
+      {/* Hiển thị bảng thông tin cây chỉ khi ở trang trại chính */}
+      {currentScene === SceneType.FARM && (
+        <TreeInfoPanel tree={selectedTree} onClose={handleCloseInfoPanel} />
+      )}
       
-      <TreeInfoPanel tree={selectedTree} onClose={handleCloseInfoPanel} />
+      {/* Hiển thị bảng thông tin cánh đồng chỉ khi ở trang trại chính */}
+      {currentScene === SceneType.FARM && (
+        <FieldInfoPanel 
+          isVisible={showFieldInfo} 
+          onClose={handleCloseFieldInfo} 
+          onEnterCornGarden={handleEnterCornGarden}
+        />
+      )}
     </>
   );
 };
-
-// Add window interface
-declare global {
-  interface Window {
-    farmUI?: {
-      setSelectedTree: (tree: TreeInfoExtended | null) => void;
-      setHoverTreePosition: (position: [number, number, number] | null) => void;
-    };
-  }
-}
 
 export default FarmUI;

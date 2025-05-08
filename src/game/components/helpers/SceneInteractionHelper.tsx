@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ENABLE_DEV_TOOLS } from '../../../App';
@@ -62,6 +62,79 @@ export function useSceneInteraction() {
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
     )
+  };
+}
+
+/**
+ * Component quản lý tương tác với Field
+ */
+export function useFieldInteraction() {
+  const [showFieldInfo, setShowFieldInfo] = useState(false);
+  
+  // Đăng ký lắng nghe sự kiện click vào cánh đồng từ Three.js và camera movement
+  useEffect(() => {
+    console.log('[SceneInteractionHelper] Setting up field interaction listeners');
+    
+    // When field is clicked directly
+    const handleFieldClick = () => {
+      console.log('[SceneInteractionHelper] Field clicked event received');
+      // Move the camera to cornfield view
+      if (window.farmCameraController) {
+        window.farmCameraController.goToView('cornfield');
+      }
+    };
+    
+    // Listen for navigation to cornfield via buttons
+    const handleViewChanging = (e: CustomEvent) => {
+      if (e.detail && e.detail.toViewId === 'cornfield') {
+        console.log('[SceneInteractionHelper] Camera moving to cornfield view');
+        // Hide panel during camera movement
+        setShowFieldInfo(false);
+      }
+    };
+    
+    // When camera stops moving to cornfield view
+    const handleViewChanged = (e: CustomEvent) => {
+      if (e.detail && e.detail.viewId === 'cornfield') {
+        console.log('[SceneInteractionHelper] Camera reached cornfield view, showing panel');
+        // Show panel with a delay after camera stops
+        setTimeout(() => {
+          // Thay vì set state trực tiếp, hãy gọi hàm của farmUI
+          if (window.farmUI?.setSelectedField) {
+            window.farmUI.setSelectedField(true);
+          }
+        }, 500);
+      } else {
+        // Hide panel when moving to any other view
+        if (window.farmUI?.setSelectedField) {
+          window.farmUI.setSelectedField(false);
+        }
+      }
+    };
+    
+    window.addEventListener('field-clicked', handleFieldClick);
+    window.addEventListener('view-changing', handleViewChanging as EventListener);
+    window.addEventListener('view-changed', handleViewChanged as EventListener);
+    
+    return () => {
+      window.removeEventListener('field-clicked', handleFieldClick);
+      window.removeEventListener('view-changing', handleViewChanging as EventListener);
+      window.removeEventListener('view-changed', handleViewChanged as EventListener);
+    };
+  }, []);
+  
+  // Handle direct click on the field in Three.js scene
+  const handleFieldClick = (e: any) => {
+    e.stopPropagation();
+    console.log('[SceneInteractionHelper] Field clicked directly in Three.js scene');
+    
+    // Dispatch custom event
+    window.dispatchEvent(new CustomEvent('field-clicked'));
+  };
+  
+  return {
+    showFieldInfo,
+    handleFieldClick
   };
 }
 
