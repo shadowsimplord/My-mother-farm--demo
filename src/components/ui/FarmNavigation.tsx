@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CameraPosition } from '../../game/controllers/CameraController';
+import { CameraPosition } from '../controls/CameraController';
 
 interface FarmNavigationProps {
   position?: 'left' | 'right';
@@ -12,26 +12,22 @@ const FarmNavigation: React.FC<FarmNavigationProps> = ({ /* position không đư
 
   // Lấy các viewpoints từ CameraController khi component mount
   useEffect(() => {
-    // Kiểm tra controller và lấy viewpoints
     const getControllerData = () => {
       if (window.farmCameraController) {
         console.log('[FarmNavigation] Fetching viewpoints from controller');
         try {
-          // Lọc các viewpoints để đảm bảo chỉ hiển thị những viewpoint có tên
           const filteredViewpoints = window.farmCameraController.getViewpoints().filter(
             (view) => view.name && view.id
           );
           setViewpoints(filteredViewpoints);
-          
-          // Get current view - safely handle errors
+
           try {
             const currentViewId = window.farmCameraController.getCurrentView();
             setCurrentView(currentViewId);
           } catch (e) {
             console.warn('[FarmNavigation] Could not get current view:', e);
           }
-          
-          // Successfully connected
+
           return true;
         } catch (e) {
           console.warn('[FarmNavigation] Error accessing controller methods:', e);
@@ -42,10 +38,8 @@ const FarmNavigation: React.FC<FarmNavigationProps> = ({ /* position không đư
         return false;
       }
     };
-    
-    // Try to get controller data immediately
+
     if (!getControllerData()) {
-      // If failed, set up polling with a max number of retries
       let retries = 0;
       const maxRetries = 10;
       const interval = setInterval(() => {
@@ -55,203 +49,98 @@ const FarmNavigation: React.FC<FarmNavigationProps> = ({ /* position không đư
         retries++;
       }, 1000);
     }
-    
-    // Lắng nghe sự kiện khi view thay đổi để cập nhật UI
+
     const handleViewChanging = (e: CustomEvent) => {
       if (e.detail && e.detail.toViewId) {
         console.log(`[FarmNavigation] View changing to: ${e.detail.toViewId}`);
         setCurrentView(e.detail.toViewId);
       }
     };
-    
+
     const handleViewChanged = (e: CustomEvent) => {
       if (e.detail && e.detail.viewId) {
         console.log(`[FarmNavigation] View changed to: ${e.detail.viewId}`);
         setCurrentView(e.detail.viewId);
       }
     };
-    
+
     window.addEventListener('view-changing', handleViewChanging as EventListener);
     window.addEventListener('view-changed', handleViewChanged as EventListener);
-    
+
     return () => {
       window.removeEventListener('view-changing', handleViewChanging as EventListener);
       window.removeEventListener('view-changed', handleViewChanged as EventListener);
     };
   }, []);
 
-  // Xử lý khi chọn view
   const handleViewSelect = (viewId: string) => {
     console.log(`[FarmNavigation] Selected view: ${viewId}`);
     if (window.farmCameraController && !window.farmCameraController.isTransitioning()) {
       try {
-        // Use the camera controller to move to the selected view
         window.farmCameraController.goToView(viewId);
       } catch (e) {
         console.error('[FarmNavigation] Error calling goToView:', e);
-        // Fallback to event if method call fails
         window.dispatchEvent(new CustomEvent('change-view', {
           detail: { viewId }
         }));
       }
     } else {
       console.log('[FarmNavigation] CameraController not available or transitioning, using event dispatch');
-      // Dispatch event for CameraController to handle
       window.dispatchEvent(new CustomEvent('change-view', {
         detail: { viewId }
       }));
     }
   };
 
-  // Tạo icon và hình ảnh dựa trên ID của viewpoint
   const getIconForView = (viewId: string): React.ReactNode => {
     switch(viewId.toLowerCase()) {
       case 'overview':
         return (
-          <div className="view-icon">
+          <div className="flex justify-center items-center">
             <span role="img" aria-label="Overview">🔍</span>
           </div>
         );
       case 'house':
         return (
-          <div className="view-icon">
+          <div className="flex justify-center items-center">
             <span role="img" aria-label="House">🏠</span>
           </div>
         );
       case 'coffee': case 'coffeearea':
         return (
-          <div className="view-icon">
+          <div className="flex justify-center items-center">
             <span role="img" aria-label="Coffee">☕</span>
           </div>
         );
       case 'cherry': case 'cherryarea':
         return (
-          <div className="view-icon">
+          <div className="flex justify-center items-center">
             <span role="img" aria-label="Cherry">🍒</span>
           </div>
         );
       case 'forest':
         return (
-          <div className="view-icon">
+          <div className="flex justify-center items-center">
             <span role="img" aria-label="Forest">🌳</span>
           </div>
         );
       case 'cornfield':
         return (
-          <div className="view-icon">
+          <div className="flex justify-center items-center">
             <span role="img" aria-label="Corn Field">🌽</span>
           </div>
         );
       default:
         return (
-          <div className="view-icon">
+          <div className="flex justify-center items-center">
             <span role="img" aria-label="Location">📍</span>
           </div>
         );
     }
   };
 
-  // Thiết lập style cho menu navigation theo trang web dairyfarmersofcanada.ca
-  const containerStyle: React.CSSProperties = {
-    position: 'absolute',
-    bottom: '30px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(10px)',
-    padding: '15px 25px',
-    borderRadius: '50px',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-    zIndex: 100,
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: '20px',
-    transition: 'all 0.3s ease',
-  };
-
-  const buttonOuterStyle: React.CSSProperties = {
-    position: 'relative',
-    margin: '0 5px',
-  };
-
-  const buttonStyle = (isActive: boolean): React.CSSProperties => ({
-    width: '75px',
-    height: '75px',
-    borderRadius: '50%',
-    border: 'none',
-    cursor: 'pointer',
-    background: isActive ? '#e9f4e3' : 'white',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontSize: '28px',
-    boxShadow: isActive 
-      ? '0 0 0 3px #63a24b, 0 8px 16px rgba(99, 162, 75, 0.3)' 
-      : '0 4px 12px rgba(0, 0, 0, 0.1)',
-    transition: 'all 0.3s ease',
-    overflow: 'hidden',
-    padding: 0,
-    position: 'relative',
-  });
-
-  const iconStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    height: '100%',
-  };
-
-  const tooltipStyle = (viewId: string): React.CSSProperties => ({
-    position: 'absolute',
-    bottom: '90px', // Thay đổi vị trí tooltip từ trên xuống dưới
-    left: '50%',
-    transform: 'translateX(-50%)',
-    backgroundColor: '#4a7e38',
-    color: 'white',
-    padding: '6px 14px',
-    borderRadius: '8px',
-    fontSize: '15px',
-    fontWeight: 500,
-    whiteSpace: 'nowrap',
-    pointerEvents: 'none',
-    opacity: showTooltip === viewId ? 1 : 0,
-    transition: 'opacity 0.3s ease',
-    zIndex: 1000,
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-  });
-
-  // Thêm mũi tên tam giác chỉ xuống từ tooltip
-  const tooltipArrowStyle: React.CSSProperties = {
-    position: 'absolute',
-    bottom: '-8px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: '0',
-    height: '0',
-    borderLeft: '8px solid transparent',
-    borderRight: '8px solid transparent',
-    borderTop: '8px solid #4a7e38',
-  };
-
-  // Thêm wave effect cho chỉ báo viewpoint active
-  const waveEffectStyle = (isActive: boolean): React.CSSProperties => ({
-    position: 'absolute',
-    top: '-15px',
-    left: '-15px',
-    right: '-15px',
-    bottom: '-15px',
-    borderRadius: '50%',
-    border: '3px solid #63a24b',
-    opacity: isActive ? 0.6 : 0,
-    animation: isActive ? 'wavePulse 2s infinite' : 'none',
-    pointerEvents: 'none',
-  });
-
-  // Kiểm tra xem có viewpoints để hiển thị không
   if (viewpoints.length === 0) {
-    return null; // Không render gì nếu không có viewpoints
+    return null;
   }
 
   return (
@@ -272,25 +161,29 @@ const FarmNavigation: React.FC<FarmNavigationProps> = ({ /* position không đư
           }
         }
       `}</style>
-      <div style={containerStyle}>
+      <div className="absolute bottom-[30px] left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md py-[15px] px-[25px] rounded-[50px] shadow-lg z-100 flex flex-row justify-center gap-5 transition-all duration-300">
         {viewpoints.map((view) => (
-          <div key={view.id} style={buttonOuterStyle}>
+          <div key={view.id} className="relative mx-[5px]">
             <button
               onClick={() => handleViewSelect(view.id)}
-              style={buttonStyle(currentView === view.id)}
+              className={`w-[75px] h-[75px] rounded-full border-none cursor-pointer flex justify-center items-center text-[28px] overflow-hidden p-0 relative transition-all duration-300
+                ${currentView === view.id ? 
+                  'bg-[#e9f4e3] shadow-[0_0_0_3px_#63a24b,0_8px_16px_rgba(99,162,75,0.3)]' : 
+                  'bg-white shadow-[0_4px_12px_rgba(0,0,0,0.1)]'}`}
               onMouseEnter={() => setShowTooltip(view.id)}
               onMouseLeave={() => setShowTooltip(null)}
               aria-label={view.name}
             >
-              <div style={iconStyle}>
+              <div className="flex justify-center items-center w-full h-full">
                 {getIconForView(view.id)}
               </div>
-              <div style={waveEffectStyle(currentView === view.id)}></div>
+              <div className={`absolute -top-[15px] -left-[15px] -right-[15px] -bottom-[15px] rounded-full border-[3px] border-[#63a24b] pointer-events-none
+                ${currentView === view.id ? 'opacity-60 animate-[wavePulse_2s_infinite]' : 'opacity-0'}`}></div>
             </button>
             {showTooltip === view.id && (
-              <div style={tooltipStyle(view.id)}>
+              <div className="absolute bottom-[90px] left-1/2 -translate-x-1/2 bg-[#4a7e38] text-white py-[6px] px-[14px] rounded-lg text-[15px] font-medium whitespace-nowrap pointer-events-none z-[1000] shadow-md transition-opacity duration-300">
                 {view.name}
-                <div style={tooltipArrowStyle}></div>
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-[#4a7e38]"></div>
               </div>
             )}
           </div>

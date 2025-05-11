@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import { OrbitControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { CornPlants } from '../game/objects/FruitTrees/CornPlant';
+import { CornPlants } from '../game/objects/plants/CornPlant';
 import { TreeInfo } from '../game/types';
 
 // Component con để render nội dung bên trong Canvas

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { TreeInfoExtended } from '../game/utils/treeInfoHelpers';
-import { debounce } from '../game/utils/debounce';
-import FarmNavigation from '../components/ui/FarmNavigation';
-import TreeInfoPanel from '../components/ui/TreeInfoPanel';
-import FieldInfoPanel from '../components/ui/FieldInfoPanel';
+import { TreeInfoExtended } from '../../game/utils/helpers/treeInfoHelpers';
+import { debounce } from '../../game/utils/debounce';
+import FarmNavigation from './FarmNavigation';
+import FieldInfoPanel from './panels/FieldInfoPanel';
 import { Canvas } from '@react-three/fiber';
-import { SceneType } from '../game/managers/SceneManager';
+import { SceneType } from '../../game/managers/SceneManager';
+import { PlantPanel } from './panels/BasePanel';
 
 interface FarmUIProps {
   children?: React.ReactNode;
@@ -80,8 +80,7 @@ const FarmUI = ({ children, currentScene = SceneType.FARM }: FarmUIProps) => {
       <Canvas
         shadows
         camera={{ position: [0, 0, 0], fov: 50 }}
-        style={{ width: '100vw', height: '100vh' }}
-        // Tối ưu Canvas performance
+        className="w-screen h-screen"
         gl={{ 
           antialias: window.devicePixelRatio > 1.5 ? false : true, // Tắt antialias trên màn hình retina
           powerPreference: 'high-performance', 
@@ -99,10 +98,13 @@ const FarmUI = ({ children, currentScene = SceneType.FARM }: FarmUIProps) => {
       
       {/* Chỉ hiển thị FarmNavigation khi ở trang trại chính */}
       {currentScene === SceneType.FARM && <FarmNavigation position="right" />}
-      
-      {/* Hiển thị bảng thông tin cây chỉ khi ở trang trại chính */}
-      {currentScene === SceneType.FARM && (
-        <TreeInfoPanel tree={selectedTree} onClose={handleCloseInfoPanel} />
+        {/* Hiển thị bảng thông tin cây thông qua PlantPanel mới */}
+      {currentScene === SceneType.FARM && selectedTree && (
+        <PlantPanel
+          plant={selectedTree}
+          onClose={handleCloseInfoPanel}
+          position="topRight"
+        />
       )}
       
       {/* Hiển thị bảng thông tin cánh đồng chỉ khi ở trang trại chính */}

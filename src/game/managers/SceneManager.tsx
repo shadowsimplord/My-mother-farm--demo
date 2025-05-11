@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { TreeInfo } from '../types';
-import CornPlantInfoPanel from '../../components/ui/CornPlantInfoPanel';
+import { PlantPanel } from '../../components/ui/panels/BasePanel';
 import WorldScene from '../../scenes/WorldScene';
-import FarmUI from '../../scenes/FarmUI';
+import FarmUI from '../../components/ui/FarmUI';
 import LoadingScreen from '../../components/ui/LoadingScreen';
 
 // Enum các scene để quản lý dễ dàng
@@ -85,18 +85,9 @@ export function useSceneManager() {
     if (!isTransitioning) return null;
     
     return (
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 1000,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        backdropFilter: 'blur(5px)',
-      }}>
+      <div className="absolute inset-0 w-full h-full z-[1000] bg-black/70 backdrop-blur-md">
         <LoadingScreen transparentLoader={true}>
-          <div style={{ display: 'none' }}></div>
+          <div className="hidden"></div>
         </LoadingScreen>
       </div>
     );
@@ -126,22 +117,14 @@ export const SceneRenderer: React.FC = () => {
       <FarmUI currentScene={currentScene}>
         <WorldScene currentScene={currentScene} />
       </FarmUI>
-      
-      {/* Hiển thị bảng thông tin cây ngô khi được chọn */}
+        {/* Hiển thị bảng thông tin cây ngô khi được chọn */}
       {currentScene === SceneType.CORN_GARDEN && selectedCornPlant && (
-        <div style={{
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          width: '100%', 
-          height: '100%', 
-          pointerEvents: 'none', // Ngăn click events ở nền
-          zIndex: 10
-        }}>
-          <div style={{ pointerEvents: 'auto' }}> {/* Wrapper mới để cho phép click events */}
-            <CornPlantInfoPanel 
-              plant={selectedCornPlant} 
+        <div className="absolute inset-0 w-full h-full pointer-events-none z-10">
+          <div className="pointer-events-auto">
+            <PlantPanel 
+              plant={{...selectedCornPlant, type: 'corn'}} 
               onClose={handleClosePlantInfo}
+              position="topRight"
             />
           </div>
         </div>

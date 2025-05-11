@@ -116,99 +116,42 @@ const DevTools: React.FC<DevToolsProps> = ({ visible, setVisible }) => {
     };
   }, [visible]);
 
-  // Styles cho UI
-  const styles = {
-    container: {
-      position: 'absolute' as const,
-      top: '10px',
-      left: '10px', 
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      color: '#fff',
-      padding: '10px',
-      borderRadius: '5px',
-      fontFamily: 'monospace',
-      zIndex: 1000,
-      display: visible ? 'block' : 'none',
-      minWidth: '250px',
-    },
-    toggleButton: {
-      position: 'absolute' as const,
-      bottom: '10px', // Thay đổi từ top thành bottom
-      left: '10px',
-      padding: '5px 10px',
-      backgroundColor: '#4CAF50',
-      color: 'white',
-      border: 'none',
-      borderRadius: '5px',
-      cursor: 'pointer',
-      zIndex: 1000,
-    },
-    coordsDisplay: {
-      marginBottom: '5px',
-    },
-    label: {
-      fontWeight: 'bold' as const,
-      marginRight: '5px',
-    },
-    value: {
-      color: '#4CAF50',
-    },
-    controlsContainer: {
-      marginTop: '15px',
-      borderTop: '1px solid rgba(255, 255, 255, 0.3)',
-      paddingTop: '10px',
-    },
-    controlButton: {
-      backgroundColor: '#333',
-      color: 'white',
-      border: '1px solid #555',
-      borderRadius: '4px',
-      padding: '5px 10px',
-      marginRight: '8px',
-      marginBottom: '8px',
-      cursor: 'pointer',
-      fontSize: '12px',
-      transition: 'background-color 0.2s',
-    },
-    activeButton: {
-      backgroundColor: '#4CAF50',
-      border: '1px solid #2e7d32',
-    }
-  };
-
   return (
     <>
-      <button style={styles.toggleButton} onClick={toggleVisibility}>
+      <button 
+        className="absolute bottom-[10px] left-[10px] py-[5px] px-[10px] bg-farm-green text-white border-none rounded-md cursor-pointer z-[1000]"
+        onClick={toggleVisibility}
+      >
         {visible ? 'Hide Dev Tools' : 'Show Dev Tools'}
       </button>
 
       {visible && (
-        <div style={styles.container}>
+        <div className="absolute top-[10px] left-[10px] bg-black/70 text-white p-[10px] rounded-md font-mono z-[1000] block min-w-[250px]">
           <h3>Developer Tools</h3>
           
           {/* Hiển thị tọa độ click đầu tiên */}
           {coords && (
-            <div style={styles.coordsDisplay}>
-              <span style={styles.label}>Click Position:</span>
-              <span style={styles.value}>
+            <div className="mb-[5px]">
+              <span className="font-bold mr-[5px]">Click Position:</span>
+              <span className="text-farm-green">
                 X: {coords.x}, Y: {coords.y}, Z: {coords.z}
               </span>
             </div>
           )}
 
           {hoveredTile && (
-            <div style={styles.coordsDisplay}>
-              <span style={styles.label}>Grid Tile:</span>
-              <span style={styles.value}>
+            <div className="mb-[5px]">
+              <span className="font-bold mr-[5px]">Grid Tile:</span>
+              <span className="text-farm-green">
                 X: {hoveredTile.x}, Z: {hoveredTile.z}
               </span>
             </div>
           )}
           
           {/* Di chuyển camera position xuống dưới một chút */}
-          <div style={{...styles.coordsDisplay, marginTop: '10px'}}>
-            <span style={styles.label}>Camera Position:</span>
-            <span style={styles.value}>
+          <div className="mb-[5px] mt-[10px]">
+            <span className="font-bold mr-[5px]">Camera Position:</span>
+            <span className="text-farm-green">
               X: {cameraPosition.x}, 
               Y: {cameraPosition.y}, 
               Z: {cameraPosition.z}
@@ -216,22 +159,22 @@ const DevTools: React.FC<DevToolsProps> = ({ visible, setVisible }) => {
           </div>
           
           {/* Thêm phần điều khiển cho grid và wireframe */}
-          <div style={styles.controlsContainer}>
+          <div className="mt-[15px] border-t border-white/30 pt-[10px]">
             <h4>Rendering Controls</h4>
             <button 
-              style={{
-                ...styles.controlButton,
-                ...(showGrid ? styles.activeButton : {})
-              }} 
+              className={`
+                bg-gray-800 text-white border border-gray-700 rounded px-[10px] py-[5px] mr-2 mb-2 cursor-pointer text-xs transition-colors
+                ${showGrid ? 'bg-farm-green border-farm-dark-green' : ''}
+              `}
               onClick={toggleGrid}
             >
               {showGrid ? '✓ Grid' : '◻ Grid'}
             </button>
             <button 
-              style={{
-                ...styles.controlButton,
-                ...(showWireframe ? styles.activeButton : {})
-              }} 
+              className={`
+                bg-gray-800 text-white border border-gray-700 rounded px-[10px] py-[5px] mr-2 mb-2 cursor-pointer text-xs transition-colors
+                ${showWireframe ? 'bg-farm-green border-farm-dark-green' : ''}
+              `}
               onClick={toggleWireframe}
             >
               {showWireframe ? '✓ Wireframe' : '◻ Wireframe'}

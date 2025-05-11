@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@components/*": ["src/components/*"],
+      "@game/*": ["src/game/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@utils/*": ["src/game/utils/*"],
+      "@scenes/*": ["src/scenes/*"],
+      "@assets/*": ["src/assets/*"],
+      "@helpers/*": ["src/game/utils/helpers/*"],
+      "@devtools/*": ["src/devtools/*"]
+    }
+  }
+}

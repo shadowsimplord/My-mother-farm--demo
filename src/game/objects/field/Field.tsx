@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GLTF } from 'three-stdlib';
 import { ThreeEvent } from '@react-three/fiber';
-import { FarmUIInterface } from '../../../scenes/FarmUI';
+import { FarmUIInterface } from '../../../components/ui/FarmUI';
 
 type GLTFResult = GLTF & {
   nodes: {

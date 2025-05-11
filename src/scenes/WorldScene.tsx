@@ -3,15 +3,14 @@ import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEffect } from 'react'
 
-import FarmTerrain from '../game/components/farm/FarmTerrain'
-import FarmEnvironment from '../game/components/farm/FarmEnvironment' 
-import FruitTreesCollection from '../game/objects/FruitTrees/FruitTreesCollection'
+import FarmTerrain from '../game/world/FarmTerrain'
+import FarmEnvironment from '../game/world/FarmEnvironment' 
 import Field from '../game/objects/field/Field'
-import CameraController from '../game/controllers/CameraController'
-import { usePositionTracker, GroundClickDetector } from '../game/components/helpers/PositionTracker'
-import DevToolsComponents from '../game/components/helpers/DevToolsComponents'
+import CameraController from '../components/controls/CameraController'
+import { usePositionTracker, GroundClickDetector } from '../game/utils/helpers/PositionTracker'
+import DevToolsComponents from '../game/utils/helpers/DevToolsComponents'
 import { useGroundHeightLimiter } from '../hooks/useGroundHeightLimiter'
-import { useFieldInteraction } from '../game/components/helpers/SceneInteractionHelper'
+import { useFieldInteraction } from '../game/utils/helpers/SceneInteractionHelper'
 import CornGardenScene from './CornGardenScene'
 import { SceneType } from '../game/managers/SceneManager'
 
@@ -43,7 +42,6 @@ function FarmSceneContent() {
       <GroundClickDetector />
       
       <FarmTerrain onClick={handleClick} />
-      <FruitTreesCollection />
       
       {/* Giữ nguyên vị trí Field theo yêu cầu */}
       <Field 
@@ -72,7 +70,6 @@ function FarmSceneContent() {
   )
 }
 
-// WorldScene Component - Giờ chỉ là container đơn giản
 function WorldScene({ currentScene = SceneType.FARM }: { currentScene?: SceneType }) {
   // Gọi hooks quản lý field interaction cho farm scene
   useFieldInteraction();
