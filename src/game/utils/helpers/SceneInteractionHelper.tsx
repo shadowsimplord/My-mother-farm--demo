@@ -16,18 +16,32 @@ export function useSceneInteraction() {
       window.dispatchEvent(new CustomEvent('camera-update', { 
         detail: { camera: camera.position } 
       }));
-    }
-  });
-  
+    }  });
   // Xử lý sự kiện click/pointer để gửi tọa độ tới DevTools
-  const handleSceneInteraction = (e: any) => {
+  const handleSceneInteraction = (
+    e: { stopPropagation?: () => void; point?: { x: number; y: number }; nativeEvent?: { clientX: number; clientY: number }; type?: string }
+  ) => {
     if (!ENABLE_DEV_TOOLS) return;
     
-    e.stopPropagation();
+    if (e.stopPropagation) {
+      e.stopPropagation();
+    }
     
     // Tạo raycast từ vị trí click
     const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(e.point, camera);
+    
+    // Kiểm tra và sử dụng e.point nếu có
+    const pointer = new THREE.Vector2();
+    if (e.point) {
+      pointer.x = e.point.x;
+      pointer.y = e.point.y;
+    } else if (e.nativeEvent) {
+      // Fallback nếu không có point
+      pointer.x = (e.nativeEvent.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(e.nativeEvent.clientY / window.innerHeight) * 2 + 1;
+    }
+    
+    raycaster.setFromCamera(pointer, camera);
     
     // Kiểm tra giao nhau với các đối tượng trong scene
     const intersects = raycaster.intersectObjects(scene.children, true);
@@ -36,7 +50,7 @@ export function useSceneInteraction() {
       const hit = intersects[0];
       
       // Phát sự kiện với thông tin chi tiết về điểm giao cắt
-      const eventName = e.type === 'click' ? 'scene-click' : 'scene-pointer';
+      const eventName = 'scene-' + (e.type || 'interaction');
       window.dispatchEvent(new CustomEvent(eventName, {
         detail: {
           point: hit.point,
@@ -66,18 +80,17 @@ export function useSceneInteraction() {
 }
 
 /**
- * Component quản lý tương tác với Field
+ * Component quản lý tương tác với CornField
  */
-export function useFieldInteraction() {
-  const [showFieldInfo, setShowFieldInfo] = useState(false);
+export function useCornFieldInteraction() {
+  const [showCornFieldInfo, setShowCornFieldInfo] = useState(false);
   
   // Đăng ký lắng nghe sự kiện click vào cánh đồng từ Three.js và camera movement
   useEffect(() => {
     console.log('[SceneInteractionHelper] Setting up field interaction listeners');
-    
-    // When field is clicked directly
-    const handleFieldClick = () => {
-      console.log('[SceneInteractionHelper] Field clicked event received');
+      // When cornfield is clicked directly
+    const handleCornFieldClick = () => {
+      console.log('[SceneInteractionHelper] CornField clicked event received');
       // Move the camera to cornfield view
       if (window.farmCameraController) {
         window.farmCameraController.goToView('cornfield');
@@ -85,11 +98,10 @@ export function useFieldInteraction() {
     };
     
     // Listen for navigation to cornfield via buttons
-    const handleViewChanging = (e: CustomEvent) => {
-      if (e.detail && e.detail.toViewId === 'cornfield') {
+    const handleViewChanging = (e: CustomEvent) => {      if (e.detail && e.detail.toViewId === 'cornfield') {
         console.log('[SceneInteractionHelper] Camera moving to cornfield view');
         // Hide panel during camera movement
-        setShowFieldInfo(false);
+        setShowCornFieldInfo(false);
       }
     };
     
@@ -99,42 +111,36 @@ export function useFieldInteraction() {
         console.log('[SceneInteractionHelper] Camera reached cornfield view, showing panel');
         // Show panel with a delay after camera stops
         setTimeout(() => {
-          // Thay vì set state trực tiếp, hãy gọi hàm của farmUI
-          if (window.farmUI?.setSelectedField) {
-            window.farmUI.setSelectedField(true);
+          // Thay đổi tên hàm từ setSelectedField sang setSelectedCornField
+          if (window.farmUI?.setSelectedCornField) {
+            window.farmUI.setSelectedCornField(true);
           }
         }, 500);
       } else {
         // Hide panel when moving to any other view
-        if (window.farmUI?.setSelectedField) {
-          window.farmUI.setSelectedField(false);
+        if (window.farmUI?.setSelectedCornField) {
+          window.farmUI.setSelectedCornField(false);
         }
       }
-    };
-    
-    window.addEventListener('field-clicked', handleFieldClick);
+    };      window.addEventListener('cornfield-clicked', handleCornFieldClick);
     window.addEventListener('view-changing', handleViewChanging as EventListener);
     window.addEventListener('view-changed', handleViewChanged as EventListener);
-    
-    return () => {
-      window.removeEventListener('field-clicked', handleFieldClick);
+      return () => {
+      window.removeEventListener('cornfield-clicked', handleCornFieldClick);
       window.removeEventListener('view-changing', handleViewChanging as EventListener);
       window.removeEventListener('view-changed', handleViewChanged as EventListener);
     };
-  }, []);
-  
-  // Handle direct click on the field in Three.js scene
-  const handleFieldClick = (e: any) => {
+  }, []);  // Handle direct click on the cornfield in Three.js scene
+  const handleCornFieldClick = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
-    console.log('[SceneInteractionHelper] Field clicked directly in Three.js scene');
+    console.log('[SceneInteractionHelper] CornField clicked directly in Three.js scene');
     
     // Dispatch custom event
-    window.dispatchEvent(new CustomEvent('field-clicked'));
+    window.dispatchEvent(new CustomEvent('cornfield-clicked'));
   };
-  
   return {
-    showFieldInfo,
-    handleFieldClick
+    showCornFieldInfo,
+    handleFieldClick: handleCornFieldClick
   };
 }
 

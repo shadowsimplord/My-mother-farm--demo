@@ -15,7 +15,7 @@ type GLTFResult = GLTF & {
   };
 };
 
-interface FieldProps {
+interface CornFieldProps {
   position?: [number, number, number];
   rotation?: [number, number, number];
   scale?: number | [number, number, number];
@@ -60,7 +60,7 @@ const CornPlant: React.FC<{
   );
 };
 
-const Field: React.FC<FieldProps> = ({
+const CornField: React.FC<CornFieldProps> = ({
   position = [0, 0, 0],
   rotation = [0, 0, 0],
   scale = 1,
@@ -98,18 +98,16 @@ const Field: React.FC<FieldProps> = ({
     }
     return positions;
   }, [rows, columns, spacing]);
-
   // Sửa hàm xử lý click
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    console.log('[Field] Field clicked');
+    console.log('[CornField] CornField clicked');
     
     // Phát sự kiện field-clicked để SceneInteractionHelper biết
-    window.dispatchEvent(new CustomEvent('field-clicked'));
-    
-    // Hiển thị thông tin cánh đồng giống như cách hiển thị thông tin cây
-    if (window.farmUI?.setSelectedField) {
-      window.farmUI.setSelectedField(true);
+    window.dispatchEvent(new CustomEvent('cornfield-clicked'));
+      // Hiển thị thông tin cánh đồng giống như cách hiển thị thông tin cây
+    if (window.farmUI?.setSelectedCornField) {
+      window.farmUI.setSelectedCornField(true);
     }
     
     // Gọi callback nếu có
@@ -164,8 +162,7 @@ const Field: React.FC<FieldProps> = ({
 // Thêm vào interface window để TypeScript biết về farmUI
 declare global {
   interface Window {
-    farmUI?: FarmUIInterface;
-  }
+    farmUI?: FarmUIInterface;  }
 }
 
-export default Field;
+export default CornField;

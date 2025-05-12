@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { TreeInfoExtended } from '../../game/utils/helpers/treeInfoHelpers';
 import { debounce } from '../../game/utils/debounce';
-import FarmNavigation from './FarmNavigation';
-import FieldInfoPanel from './panels/FieldInfoPanel';
+import CornFieldPanel from './panels/CornFieldPanel';
+import FarmHousePanel from './panels/FarmHousePanel';
 import { Canvas } from '@react-three/fiber';
 import { SceneType } from '../../game/managers/SceneManager';
 import { PlantPanel } from './panels/BasePanel';
@@ -16,7 +16,8 @@ interface FarmUIProps {
 export interface FarmUIInterface {
   setSelectedTree: (tree: TreeInfoExtended | null) => void;
   setHoverTreePosition: (position: number[] | null) => void;
-  setSelectedField?: (selected: boolean) => void;
+  setSelectedCornField?: (selected: boolean) => void;
+  showPanel: (locationId: string) => void;
 }
 
 // Declare global interface cho window
@@ -26,10 +27,10 @@ declare global {
   }
 }
 
-const FarmUI = ({ children, currentScene = SceneType.FARM }: FarmUIProps) => {
-  const [selectedTree, setSelectedTree] = useState<TreeInfoExtended | null>(null);
-  // Thêm state cho việc hiển thị bảng thông tin cánh đồng
-  const [showFieldInfo, setShowFieldInfo] = useState<boolean>(false);
+const FarmUI = ({ children, currentScene = SceneType.FARM }: FarmUIProps) => {  const [selectedTree, setSelectedTree] = useState<TreeInfoExtended | null>(null);
+  // Thêm state cho việc hiển thị bảng thông tin cánh đồng ngô và nhà
+  const [showCornFieldInfo, setShowCornFieldInfo] = useState<boolean>(false);
+  const [showHouseInfo, setShowHouseInfo] = useState<boolean>(false);
   // Khai báo state để sử dụng trong UI indicators
   const [, setHoverTreePosition] = useState<number[] | null>(null);
   
@@ -44,34 +45,64 @@ const FarmUI = ({ children, currentScene = SceneType.FARM }: FarmUIProps) => {
     setSelectedTree(null);
     setHoverTreePosition(null);
   };
-  
-  // Xử lý đóng bảng thông tin cánh đồng
-  const handleCloseFieldInfo = () => {
-    setShowFieldInfo(false);
+  // Xử lý đóng bảng thông tin cánh đồng ngô và trở về góc nhìn chính (overview)
+  const handleCloseCornFieldInfo = () => {
+    setShowCornFieldInfo(false);
+    
+    // Trở về góc nhìn tổng quan (overview) khi đóng panel
+    if (window.farmCameraController) {
+      window.farmCameraController.goToView('overview');
+    }
+  };
+
+  // Xử lý đóng bảng thông tin nhà và trở về góc nhìn chính
+  const handleCloseHouseInfo = () => {
+    setShowHouseInfo(false);
+    
+    // Trở về góc nhìn tổng quan khi đóng panel
+    if (window.farmCameraController) {
+      window.farmCameraController.goToView('overview');
+    }
+  };
+
+  // Xử lý khi bấm nút vào nhà
+  const handleEnterHouse = () => {
+    console.log('[FarmUI] Entering house');
+    setShowHouseInfo(false);
+    // TODO: Thêm logic vào nhà ở đây (có thể là chức năng trong tương lai)
   };
   
   // Xử lý khi bấm nút vào vườn ngô
   const handleEnterCornGarden = () => {
     console.log('[FarmUI] Entering corn garden');
-    setShowFieldInfo(false);
+    setShowCornFieldInfo(false);
     
     // Gọi sự kiện chuyển scene
     window.dispatchEvent(new CustomEvent('prepare-scene-transition', {
       detail: { targetScene: 'corn-garden' }
     }));
   };
+  const showPanel = (locationId: string) => {
+    console.log(`[FarmUI] Showing panel for location: ${locationId}`);
+    if (locationId === 'cornfield') {
+      setShowCornFieldInfo(true);
+    } else if (locationId === 'house') {
+      setShowHouseInfo(true);
+    } else {
+      console.warn(`[FarmUI] No panel defined for location: ${locationId}`);
+    }
+  };
 
   // Export handlers to window for child components to use
   useEffect(() => {
-    window.farmUI = {
-      setSelectedTree,
-      setHoverTreePosition: debouncedSetHoverTreePosition,
-      setSelectedField: setShowFieldInfo // Thêm handler mới
-    };
-    
-    return () => {
-      window.farmUI = undefined;
-    };
+    if (!window.farmUI) {
+      window.farmUI = {
+        setSelectedTree,
+        setHoverTreePosition: debouncedSetHoverTreePosition,
+        setSelectedCornField: setShowCornFieldInfo, // Đổi tên handler
+        showPanel,
+      };
+    }
   }, [debouncedSetHoverTreePosition]);
 
 
@@ -86,33 +117,36 @@ const FarmUI = ({ children, currentScene = SceneType.FARM }: FarmUIProps) => {
           powerPreference: 'high-performance', 
           alpha: false, // Tắt alpha để tăng hiệu suất
           stencil: false, // Tắt stencil buffer nếu không cần
-          depth: true 
-        }}
+          depth: true        }}
         // Thay đổi từ "demand" sang "always" để zoom hoạt động mượt mà
         frameloop="always" 
         performance={{ min: 0.5 }} // Cho phép giảm chất lượng khi FPS thấp
       >
         {children}
-       
       </Canvas>
       
-      {/* Chỉ hiển thị FarmNavigation khi ở trang trại chính */}
-      {currentScene === SceneType.FARM && <FarmNavigation position="right" />}
-        {/* Hiển thị bảng thông tin cây thông qua PlantPanel mới */}
+      {/* Hiển thị bảng thông tin cây thông qua PlantPanel mới */}
       {currentScene === SceneType.FARM && selectedTree && (
         <PlantPanel
           plant={selectedTree}
           onClose={handleCloseInfoPanel}
           position="topRight"
         />
-      )}
-      
-      {/* Hiển thị bảng thông tin cánh đồng chỉ khi ở trang trại chính */}
+      )}      {/* Hiển thị bảng thông tin cánh đồng ngô chỉ khi ở trang trại chính */}
       {currentScene === SceneType.FARM && (
-        <FieldInfoPanel 
-          isVisible={showFieldInfo} 
-          onClose={handleCloseFieldInfo} 
+        <CornFieldPanel 
+          isVisible={showCornFieldInfo} 
+          onClose={handleCloseCornFieldInfo} 
           onEnterCornGarden={handleEnterCornGarden}
+        />
+      )}
+
+      {/* Hiển thị bảng thông tin nhà khi ở trang trại chính */}
+      {currentScene === SceneType.FARM && (
+        <FarmHousePanel 
+          isVisible={showHouseInfo} 
+          onClose={handleCloseHouseInfo} 
+          onEnterHouse={handleEnterHouse}
         />
       )}
     </>

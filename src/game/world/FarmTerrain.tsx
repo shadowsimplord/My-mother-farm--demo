@@ -6,12 +6,11 @@ import Terrain from './Terrain';
 const FarmTerrain = ({ onClick }: { onClick?: (event: ThreeEvent<MouseEvent>) => void }) => {
   const terrainRef = useRef<THREE.Mesh>(null);
   const [useHeightmap] = useState<boolean>(true);
-
   return (
     <>
-      <Terrain 
+      {/* Địa hình chính - chi tiết và tương tác */}      <Terrain 
         ref={terrainRef} 
-        onClick={(e: any) => onClick && onClick(e)} 
+        onClick={(e: THREE.Event) => onClick && onClick(e as unknown as ThreeEvent<MouseEvent>)} 
         useHeightmap={useHeightmap} 
       />
     </>

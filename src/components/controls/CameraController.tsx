@@ -25,39 +25,17 @@ export const FARM_VIEWPOINTS: CameraPosition[] = [
     target: [0, 0, 0],
     name: 'Tổng quan trang trại',
     description: 'Nhìn toàn cảnh khu vực trang trại'
-  },
-  {
+  },  {
     id: 'house',
-    position: [-6, 3, 0],
-    target: [-2.62, -1.97, -1.05],
+    position: [5, 1, 5], 
+    target: [2, -0.5, 3], // Cập nhật target y-coordinate để khớp với vị trí nhà mới
     name: 'Ngôi nhà',
     description: 'Thăm quan ngôi nhà trang trại'
   },
   {
-    id: 'coffee',
-    position: [-10, 3, 12],
-    target: [-6, -2, 7],
-    name: 'Vườn cà phê',
-    description: 'Khu vực trồng cây cà phê'
-  },
-  {
-    id: 'cherry',
-    position: [12, 3, -2],
-    target: [9, -2, -3],
-    name: 'Vườn anh đào',
-    description: 'Khu vực trồng cây anh đào'
-  },
-  {
-    id: 'forest',
-    position: [0, 10, -25],
-    target: [0, 0, -20],
-    name: 'Khu rừng',
-    description: 'Khu rừng tự nhiên phía xa'
-  },
-  {
     id: 'cornfield',
-    position: [18, 3, 8], // Đã cập nhật phù hợp với vị trí Field [15, -1.8, 5]
-    target: [15, -1.8, 5], // Target là vị trí chính xác của Field
+    position: [8, -0.5, 6],
+    target: [9, 0.6, 6], // Target là vị trí chính xác của Field
     name: 'Vườn ngô',
     description: 'Khu vực trồng ngô xanh tốt'
   }
@@ -199,13 +177,12 @@ const CameraController: React.FC<CameraControllerProps> = ({
       window.removeEventListener('reset-camera-controls', handleResetControls as EventListener);
     };
   }, [camera, controls, initialViewId]);
-
-  // Animation mượt mà cho camera
+  // Animation mượt mà cho camera với đường cong Bezier
   useFrame(() => {
     if (transitionRef.current.isActive) {
-      // Throttle: chỉ update tối đa 40 lần/giây
+      // Throttle: chỉ update tối đa 60 lần/giây để animation mượt hơn
       const now = performance.now();
-      if (now - lastUpdateRef.current < 25) return;
+      if (now - lastUpdateRef.current < 16.7) return; // ~60fps
       lastUpdateRef.current = now;
 
       // Cập nhật tiến trình
@@ -216,15 +193,25 @@ const CameraController: React.FC<CameraControllerProps> = ({
       
       const t = transitionRef.current.progress;
       
-      // Hàm easing cho animation mượt mà (tăng/giảm tốc)
-      const easedT = easeInOutCubic(t);
+      // Hàm easing nâng cao cho animation mượt mà hơn (tăng/giảm tốc)
+      const easedT = easeInOutQuintic(t);
       
-      // Nội suy vị trí camera
-      camera.position.lerpVectors(
+      // Tạo quỹ đạo di chuyển theo đường cong Bezier
+      // Khi camera di chuyển từ xa đến gần, tạo đường cong ở độ cao cao hơn
+      const intermediateHeight = Math.max(
+        transitionRef.current.startPosition.y,
+        transitionRef.current.targetPosition.y
+      ) + 5; // Độ cao thêm cho đường cong
+      
+      const arc = calculateArcPosition(
         transitionRef.current.startPosition,
         transitionRef.current.targetPosition,
+        intermediateHeight,
         easedT
       );
+      
+      // Áp dụng vị trí theo đường cong
+      camera.position.copy(arc);
       
       // Cải thiện nội suy hướng nhìn camera
       let startLookAt: Vector3;
@@ -238,23 +225,23 @@ const CameraController: React.FC<CameraControllerProps> = ({
         );
       }
       
-      // Nội suy mượt giữa điểm nhìn hiện tại và điểm đích
+      // Sử dụng thêm anticipation trong chuyển động nhìn
+      // Camera sẽ nhìn về phía target trước khi di chuyển hoàn toàn đến đó
+      const anticipationFactor = easedT < 0.5 ? easedT * 2 : 1;
       const tempLookAt = new Vector3().lerpVectors(
         startLookAt,
         transitionRef.current.targetLookAt,
-        easedT
+        anticipationFactor
       );
       
-      // Cập nhật hướng nhìn của camera
+      // Cập nhật hướng nhìn của camera với animation mượt hơn
       camera.lookAt(tempLookAt);
       
       // Đồng bộ controls với camera
       if (controls && 'target' in controls && 'update' in controls) {
         (controls as ControlsType).target?.copy(tempLookAt);
         (controls as ControlsType).update?.();
-      }
-      
-      // Kết thúc transition chỉ setState 1 lần
+      }      // Kết thúc transition chỉ setState 1 lần
       if (t >= 1.0 && isTransitioning) {
         transitionRef.current.isActive = false;
         setIsTransitioning(false);
@@ -275,6 +262,12 @@ const CameraController: React.FC<CameraControllerProps> = ({
             // Cho phép controls nhưng với tính năng hạn chế
             (controls as ControlsType).enabled = true;
           }
+          
+          // Nếu đang xem CornField, áp dụng hiệu ứng nhẹ để camera di chuyển theo đối tượng
+          if (currentView === 'cornfield') {
+            // Điều này sẽ được xử lý trong update frame riêng cho theo dõi đối tượng
+            console.log('[CameraController] Now tracking CornField');
+          }
         } else {
           // Khôi phục controls hoàn toàn cho góc nhìn tổng quan
           setIsLocked(false);
@@ -292,26 +285,79 @@ const CameraController: React.FC<CameraControllerProps> = ({
       }
     }
   });
-
-  // Duy trì camera ở vị trí đã chọn khi locked
-  useFrame(() => {
+  // Duy trì camera ở vị trí đã chọn khi locked và thêm object tracking
+  useFrame((state) => {
     // Nếu cần theo dõi target không khóa camera rotation
     if (isLocked && !isTransitioning && currentView !== 'overview') {
       const view = FARM_VIEWPOINTS.find(v => v.id === currentView);
       if (view) {
-        // Chỉ theo dõi target để luôn hiển thị vùng quan tâm
-        // mà không khóa khả năng xoay camera bằng chuột
-        if (controls && 'target' in controls) {
-          // Đã loại bỏ khai báo biến targetVector không dùng đến
-          // Để người dùng có thể tự do di chuyển camera
+        // Object tracking - theo dõi đối tượng động với hiệu ứng nhẹ
+        if (currentView === 'cornfield') {
+          // Gentle floating movement cho camera để tạo cảm giác sống động
+          const time = state.clock.getElapsedTime();
+          const baseTarget = new Vector3(...view.target);
+          
+          // Tạo chuyển động nhẹ trên các trục để camera không hoàn toàn tĩnh
+          const offsetX = Math.sin(time * 0.3) * 0.3;
+          const offsetY = Math.sin(time * 0.2) * 0.1;
+          const offsetZ = Math.cos(time * 0.25) * 0.3;
+          
+          // Áp dụng offset nhẹ vào target
+          const dynamicTarget = new Vector3(
+            baseTarget.x + offsetX,
+            baseTarget.y + offsetY,
+            baseTarget.z + offsetZ
+          );
+          
+          // Áp dụng offset nhẹ vào vị trí camera
+          camera.position.x = view.position[0] + offsetX * 0.5;
+          camera.position.y = view.position[1] + offsetY * 0.3;
+          camera.position.z = view.position[2] + offsetZ * 0.5;
+          
+          // Cập nhật điểm nhìn của camera và controls
+          camera.lookAt(dynamicTarget);
+          
+          if (controls && 'target' in controls && 'update' in controls) {
+            (controls as ControlsType).target?.copy(dynamicTarget);
+            (controls as ControlsType).update?.();
+          }
+        } else {
+          // Đối với các view khác, chỉ theo dõi target để luôn hiển thị vùng quan tâm
+          // mà không khóa khả năng xoay camera bằng chuột
+          if (controls && 'target' in controls) {
+            // Người dùng có thể tự do di chuyển camera
+          }
         }
       }
-    }
-  });
-
-  // Hàm easing cubic cho transitions mượt mà
-  const easeInOutCubic = (x: number): number => {
-    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    }  });
+  
+  // Hàm easing quintic cho chuyển động mượt mà
+  const easeInOutQuintic = (x: number): number => {
+    return x < 0.5 ? 16 * x * x * x * x * x : 1 - Math.pow(-2 * x + 2, 5) / 2;
+  };
+  
+  // Hàm tính toán vị trí trên đường cong Bezier cho chuyển động camera
+  const calculateArcPosition = (
+    start: Vector3, 
+    end: Vector3, 
+    peakHeight: number, 
+    t: number
+  ): Vector3 => {
+    // Tính điểm kiểm soát trung gian cho đường cong
+    const midPoint = new Vector3().lerpVectors(start, end, 0.5);
+    midPoint.y = peakHeight; // Đỉnh của đường cong ở giữa
+    
+    // Công thức đường cong bậc 2 Bezier:
+    // B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+    const t1 = 1 - t;
+    const position = new Vector3(0, 0, 0);
+    
+    // Tính toán vị trí trên đường cong
+    position.addScaledVector(start, t1 * t1);
+    position.addScaledVector(midPoint, 2 * t1 * t);
+    position.addScaledVector(end, t * t);
+    
+    return position;
   };
 
   // Expose API cho các component khác

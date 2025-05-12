@@ -5,9 +5,9 @@ import { createNoise2D } from 'simplex-noise';
 
 // Các tham số địa hình
 const GRID_SIZE = 50; // Kích thước lưới
-const GRID_RESOLUTION = 100; // Số lượng phân đoạn
+const GRID_RESOLUTION = 40; // Số lượng phân đoạn - giảm từ 100 xuống 40 để cải thiện hiệu năng
 const HEIGHT_MULTIPLIER = 2; // Hệ số nhân chiều cao (tăng lên để địa hình cao hơn)
-const NOISE_SCALE = 0.12; // Tỉ lệ noise (tăng lên cho địa hình nhấp nhô nhiều hơn)2
+const NOISE_SCALE = 0.12; // Tỉ lệ noise (tăng lên cho địa hình nhấp nhô nhiều hơn)
 
 // Tham số điều chỉnh địa hình
 const NOISE_OCTAVES = 4; // Số lớp noise chồng lên nhau
@@ -16,7 +16,7 @@ const NOISE_LACUNARITY = 2.0; // Tần số giữa các octave
 const HILLS_STRENGTH = [1.0, 0.6, 0.3, 0.15]; // Cường độ của mỗi lớp đồi (octave)
 
 // Tham số làm mịn địa hình
-const SMOOTHING_PASSES = 3; // Số lần áp dụng thuật toán làm mịn
+const SMOOTHING_PASSES = 1; // Giảm số lần áp dụng thuật toán làm mịn từ 3 xuống 1 để cải thiện hiệu năng
 const SMOOTHING_FACTOR = 0.77; // Cường độ làm mịn (0-1)
 const EDGE_ROUNDNESS = 0.85; // Mức độ bo tròn cạnh (0-1)
 const TRANSITION_SMOOTHNESS = 1.5; // Mức độ mượt của chuyển tiếp giữa các cao độ
@@ -76,14 +76,27 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
     }
   }, [heightmapTexture]);
   
-  // Smoothing function for heightmap data
+  // Optimized smoothing function for heightmap data
   const smoothHeightmapData = (data: number[][], width: number, height: number): number[][] => {
-    // Create a copy of the data to avoid modifying the original
-    let result = JSON.parse(JSON.stringify(data));
+    // Create a copy of the data efficiently without using JSON parse/stringify
+    const result: number[][] = Array(height);
+    for (let y = 0; y < height; y++) {
+      result[y] = Array(width);
+      for (let x = 0; x < width; x++) {
+        result[y][x] = data[y][x];
+      }
+    }
     
-    // Apply multiple smoothing passes
+    // Apply fewer smoothing passes for better performance
     for (let pass = 0; pass < SMOOTHING_PASSES; pass++) {
-      const tempData = JSON.parse(JSON.stringify(result));
+      // Create temporary buffer to hold smoothed values
+      const tempData: number[][] = Array(height);
+      for (let y = 0; y < height; y++) {
+        tempData[y] = Array(width);
+        for (let x = 0; x < width; x++) {
+          tempData[y][x] = result[y][x];
+        }
+      }
       
       // Apply smoothing kernel to each point
       for (let y = 1; y < height - 1; y++) {
@@ -127,70 +140,16 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
         }
       }
       
-      result = tempData;
+      // Copy tempData to result for next pass
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          result[y][x] = tempData[y][x];
+        }
+      }
     }
-    
     return result;
   };
-  
-  // Hàm nội suy để lấy độ cao từ heightmap data
-  const getHeightFromHeightmap = (u: number, v: number): number => {
-    if (heightmapData.length === 0) return 0;
-    
-    const width = heightmapData[0].length;
-    const height = heightmapData.length;
-    
-    // Chuyển đổi u, v (0-1) sang tọa độ mảng
-    const x = u * (width - 1);
-    const y = v * (height - 1);
-    
-    // Get integer coordinates for bilinear interpolation
-    const x0 = Math.floor(x);
-    const y0 = Math.floor(y);
-    const x1 = Math.min(x0 + 1, width - 1);
-    const y1 = Math.min(y0 + 1, height - 1);
-    
-    // Calculate interpolation factors
-    const sx = x - x0;
-    const sy = y - y0;
-    
-    // Bilinear interpolation between corner values
-    const h00 = heightmapData[y0][x0];
-    const h01 = heightmapData[y0][x1];
-    const h10 = heightmapData[y1][x0];
-    const h11 = heightmapData[y1][x1];
-    
-    // Perform bilinear interpolation
-    const h0 = h00 * (1 - sx) + h01 * sx;
-    const h1 = h10 * (1 - sx) + h11 * sx;
-    
-    return h0 * (1 - sy) + h1 * sy;
-  };
-  
-  // Hàm tạo giá trị noise với nhiều octave
-  const getNoiseValue = (x: number, y: number): number => {
-    let amplitude = 1.0;
-    let frequency = 1.0;
-    let noiseValue = 0;
-    let amplitudeSum = 0;
-    
-    // Tạo nhiều lớp noise chồng lên với tần số và biên độ khác nhau
-    for (let i = 0; i < NOISE_OCTAVES; i++) {
-      const noiseX = x * frequency * NOISE_SCALE;
-      const noiseY = y * frequency * NOISE_SCALE;
-      
-      // Thêm layer noise với cường độ giảm dần
-      noiseValue += HILLS_STRENGTH[i % HILLS_STRENGTH.length] * amplitude * noise2D(noiseX, noiseY);
-      
-      amplitudeSum += amplitude;
-      amplitude *= NOISE_PERSISTENCE;
-      frequency *= NOISE_LACUNARITY;
-    }
-    
-    // Chuẩn hóa về khoảng -1 đến 1
-    return noiseValue / amplitudeSum;
-  };
-  
+
   // Tạo geometry cho địa hình - OPTIMIZED: chỉ tạo mặt trên
   const geometry = useMemo(() => {
     // Tạo heightmap bằng PlaneGeometry
@@ -202,15 +161,69 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
     );
     
     // Tạo heightmap sử dụng heightmap image hoặc noise
-    const { position } = planeGeometry.attributes;
-    const vertex = new THREE.Vector3();
+    const positions = planeGeometry.attributes.position.array;
     
-    // Áp dụng chiều cao cho mỗi đỉnh dựa trên heightmap hoặc noise
-    for (let i = 0; i < position.count; i++) {
-      vertex.fromBufferAttribute(position, i);
+    // Định nghĩa các hàm helper bên trong useMemo để tránh re-render không cần thiết
+    const getHeightFromHeightmap = (u: number, v: number): number => {
+      if (heightmapData.length === 0) return 0;
       
-      const x = vertex.x / GRID_SIZE;
-      const y = vertex.y / GRID_SIZE;
+      const width = heightmapData[0].length;
+      const height = heightmapData.length;
+      
+      // Chuyển đổi u, v (0-1) sang tọa độ mảng
+      const x = u * (width - 1);
+      const y = v * (height - 1);
+      
+      // Get integer coordinates for bilinear interpolation
+      const x0 = Math.floor(x);
+      const y0 = Math.floor(y);
+      const x1 = Math.min(x0 + 1, width - 1);
+      const y1 = Math.min(y0 + 1, height - 1);
+      
+      // Calculate interpolation factors
+      const sx = x - x0;
+      const sy = y - y0;
+      
+      // Bilinear interpolation between corner values
+      const h00 = heightmapData[y0][x0];
+      const h01 = heightmapData[y0][x1];
+      const h10 = heightmapData[y1][x0];
+      const h11 = heightmapData[y1][x1];
+      
+      // Perform bilinear interpolation
+      const h0 = h00 * (1 - sx) + h01 * sx;
+      const h1 = h10 * (1 - sx) + h11 * sx;
+      
+      return h0 * (1 - sy) + h1 * sy;
+    };
+    
+    const getNoiseValue = (x: number, y: number): number => {
+      let amplitude = 1.0;
+      let frequency = 1.0;
+      let noiseValue = 0;
+      let amplitudeSum = 0;
+      
+      // Tạo nhiều lớp noise chồng lên với tần số và biên độ khác nhau
+      for (let i = 0; i < NOISE_OCTAVES; i++) {
+        const noiseX = x * frequency * NOISE_SCALE;
+        const noiseY = y * frequency * NOISE_SCALE;
+        
+        // Thêm layer noise với cường độ giảm dần
+        noiseValue += HILLS_STRENGTH[i % HILLS_STRENGTH.length] * amplitude * noise2D(noiseX, noiseY);
+        
+        amplitudeSum += amplitude;
+        amplitude *= NOISE_PERSISTENCE;
+        frequency *= NOISE_LACUNARITY;
+      }
+      
+      // Chuẩn hóa về khoảng -1 đến 1
+      return noiseValue / amplitudeSum;
+    };
+    
+    // Áp dụng chiều cao cho mỗi đỉnh dựa trên heightmap hoặc noise - xử lý theo batch
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i] / GRID_SIZE;
+      const y = positions[i+1] / GRID_SIZE;
       
       // Chuyển đổi từ khoảng [-0.5, 0.5] sang [0, 1] cho texture sampling
       const u = x + 0.5;
@@ -225,15 +238,18 @@ const Terrain = React.forwardRef<THREE.Mesh, TerrainProps>(({ onClick, useHeight
       }
       
       // Áp dụng độ cao
-      vertex.z = elevation * HEIGHT_MULTIPLIER;
-      position.setXYZ(i, vertex.x, vertex.y, vertex.z);
+      positions[i+2] = elevation * HEIGHT_MULTIPLIER;
     }
+    
+    // Đánh dấu là cần cập nhật
+    planeGeometry.attributes.position.needsUpdate = true;
     
     // Tính toán normal mới do địa hình đã thay đổi
     planeGeometry.computeVertexNormals();
     
     return planeGeometry;
-  }, [noise2D, useHeightmap, heightmapData, getHeightFromHeightmap, getNoiseValue]);
+  // Chỉ phụ thuộc vào các giá trị cần thiết
+  }, [useHeightmap, heightmapData, noise2D]);
   
   // Animation và update terrain
   const materialRef = useRef(null);

@@ -36,9 +36,9 @@ export interface BasePlantPanelProps extends BasePanelProps {
 }
 
 /**
- * BaseFieldPanelProps - Interface mở rộng cho các field panel
+ * BaseCornFieldPanelProps - Interface mở rộng cho các cornfield panel
  */
-export interface BaseFieldPanelProps extends BasePanelProps {
+export interface BaseCornFieldPanelProps extends BasePanelProps {
   title: string;
   description: React.ReactNode;
   fieldIcon?: string;
@@ -74,14 +74,14 @@ export const BasePanel: React.FC<BasePanelProps & { children: React.ReactNode }>
 
   return (
     <div 
-      className={`${positionClass} z-[1000] ${overlayPosition === 'center' ? 'bg-black/50 backdrop-blur-sm' : ''}`}
+      className={`${positionClass} z-[1000] ${overlayPosition === 'center' ? 'bg-black/60 backdrop-blur-sm' : ''}`}
       onClick={overlayPosition === 'center' ? onClose : undefined}
     >
       <div 
         className="relative"
         onClick={overlayPosition === 'center' ? (e) => e.stopPropagation() : undefined}
         style={{
-          animation: overlayPosition === 'center' ? "fadeIn 0.3s ease-out" : undefined,
+          animation: overlayPosition === 'center' ? "panelFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)" : undefined,
           ...customStyle
         }}
       >
@@ -89,9 +89,14 @@ export const BasePanel: React.FC<BasePanelProps & { children: React.ReactNode }>
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes panelFadeIn {
+          from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        @keyframes overlayFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}} />
     </div>
@@ -281,10 +286,10 @@ export const PlantPanelContent: React.FC<BasePlantPanelProps> = ({
 };
 
 /**
- * FieldPanelContent - Component chuẩn để hiển thị thông tin cánh đồng
- * Được sử dụng bởi tất cả các field panel cụ thể (CornField, CoffeeField, v.v.)
+ * FieldPanelContent - Component chuẩn để hiển thị thông tin cánh đồng ngô
+ * Được sử dụng bởi tất cả các cornfield panel cụ thể (CornField, CoffeeField, v.v.)
  */
-export const FieldPanelContent: React.FC<BaseFieldPanelProps> = ({
+export const FieldPanelContent: React.FC<BaseCornFieldPanelProps> = ({
   title,
   description,
   fieldIcon,
@@ -293,33 +298,43 @@ export const FieldPanelContent: React.FC<BaseFieldPanelProps> = ({
   onClose
 }) => {
   return (
-    <div className="bg-gradient-to-b from-[#f8f8f8] to-[#e8e8e8] rounded-xl p-6 w-[450px] shadow-xl flex flex-col gap-4 relative">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-2xl font-bold text-farm-dark-green m-0">{title}</h2>
+    <div className="bg-white rounded-xl p-6 w-[500px] shadow-xl flex flex-col gap-4 relative">
+      {/* Header with close button - styled like Canadian Dairy Farm */}
+      <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-3">
+        <h2 className="text-2xl font-bold text-[#4a7e38] m-0 flex items-center">
+          {fieldIcon && <span className="mr-2 text-3xl">{fieldIcon}</span>}
+          {title}
+        </h2>
         <button 
-          className="bg-transparent border-none text-2xl cursor-pointer text-gray-600 p-1 hover:text-gray-800"
+          className="bg-transparent border-none text-2xl cursor-pointer text-gray-500 p-1 hover:text-gray-800 transition-colors"
           onClick={onClose}
+          aria-label="Close panel"
         >
           ×
         </button>
       </div>
       
-      {fieldIcon && (
-        <div className="w-full h-[150px] rounded-lg mb-4 bg-gray-100">
-          <div className="w-full h-full flex justify-center items-center bg-[#e0f2e0] text-5xl">
-            {fieldIcon}
+      {/* Main image - like Canadian Dairy Farm style */}
+      <div className="w-full h-[220px] rounded-lg mb-4 overflow-hidden">
+        <div className="w-full h-full flex justify-center items-center bg-[#e9f4e3] relative">
+          <div className="text-8xl">{fieldIcon}</div>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[rgba(0,0,0,0.5)] to-transparent p-4 text-white">
+            <div className="font-bold text-lg">Corn Field</div>
+            <div className="text-sm">Healthy crop ready for harvest</div>
           </div>
         </div>
-      )}
+      </div>
       
-      <div className="text-base leading-relaxed text-gray-700 mb-2">
+      {/* Description content - styled like Canadian Dairy Farm */}
+      <div className="text-base leading-relaxed text-gray-700 mb-4 bg-gray-50 p-4 rounded-lg">
         {description}
       </div>
       
-      <div className="flex gap-2.5 justify-center mt-4">
+      {/* Action buttons - styled like Canadian Dairy Farm */}
+      <div className="flex gap-3 justify-end mt-2">
         {primaryAction && (
           <button 
-            className="py-3 px-6 bg-farm-green text-white border-none rounded-lg cursor-pointer text-base font-bold flex items-center gap-2 transition-all duration-200 hover:bg-[#45a049] hover:-translate-y-0.5"
+            className="py-3 px-6 bg-[#4a7e38] text-white border-none rounded-lg cursor-pointer text-base font-medium flex items-center gap-2 transition-all duration-200 hover:bg-[#3d6b2d]"
             onClick={primaryAction.onClick}
           >
             {primaryAction.icon && <span>{primaryAction.icon}</span>}
@@ -329,7 +344,7 @@ export const FieldPanelContent: React.FC<BaseFieldPanelProps> = ({
         
         {secondaryAction && (
           <button 
-            className="py-3 px-6 bg-transparent text-farm-green border border-farm-green rounded-lg cursor-pointer text-base font-bold flex items-center gap-2 transition-all duration-200 hover:bg-[#f0fff0] hover:-translate-y-0.5"
+            className="py-3 px-6 bg-gray-200 text-gray-700 border-none rounded-lg cursor-pointer text-base font-medium transition-all duration-200 hover:bg-gray-300"
             onClick={secondaryAction.onClick}
           >
             {secondaryAction.label}

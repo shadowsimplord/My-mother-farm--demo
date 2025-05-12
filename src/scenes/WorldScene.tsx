@@ -5,20 +5,22 @@ import { useEffect } from 'react'
 
 import FarmTerrain from '../game/world/FarmTerrain'
 import FarmEnvironment from '../game/world/FarmEnvironment' 
-import Field from '../game/objects/field/Field'
+import CornField from '../game/objects/field/CornField' // Tương lai nên đổi đường dẫn thư mục thành cornfield
 import CameraController from '../components/controls/CameraController'
 import { usePositionTracker, GroundClickDetector } from '../game/utils/helpers/PositionTracker'
 import DevToolsComponents from '../game/utils/helpers/DevToolsComponents'
 import { useGroundHeightLimiter } from '../hooks/useGroundHeightLimiter'
-import { useFieldInteraction } from '../game/utils/helpers/SceneInteractionHelper'
+import { useCornFieldInteraction } from '../game/utils/helpers/SceneInteractionHelper'
 import CornGardenScene from './CornGardenScene'
 import { SceneType } from '../game/managers/SceneManager'
+import NavigationMarkers from '../game/objects/navigation/NavigationMarkers'
+import FarmBuildings from '../game/objects/buildings/FarmBuildings'
 
 // Component con này sẽ được render bên trong Canvas
 function FarmSceneContent() {
   const { scene, camera, gl } = useThree();
   const { handleClick } = usePositionTracker();
-  const { handleFieldClick } = useFieldInteraction();
+  const { handleFieldClick } = useCornFieldInteraction();
   
   // Sử dụng hook để giới hạn độ cao camera so với mặt đất
   useGroundHeightLimiter(1.0);
@@ -31,8 +33,7 @@ function FarmSceneContent() {
     scene.background = new THREE.Color('#b0e0f7')
     gl.toneMapping = THREE.LinearToneMapping
   }, [camera, scene, gl])
-  
-  return (
+    return (
     <>
       <CameraController initialViewId="overview" transitionDuration={1.5} />
       
@@ -40,15 +41,24 @@ function FarmSceneContent() {
       
       {/* Plane không nhìn thấy để bắt sự kiện click trên nền */}
       <GroundClickDetector />
+        <FarmTerrain onClick={handleClick} />
       
-      <FarmTerrain onClick={handleClick} />
-      
-      {/* Giữ nguyên vị trí Field theo yêu cầu */}
-      <Field 
-        position={[15, -1.8, 5]} 
+      {/* Giữ nguyên vị trí CornField theo yêu cầu */}      <CornField 
+        position={[8, -0.5, 6]} 
         scale={0.5} 
         onClick={handleFieldClick} 
       />
+      
+      {/* Farm Buildings */}
+      <FarmBuildings 
+        onBuildingClick={(type, id) => {
+          console.log(`Building clicked: ${type}, ID: ${id}`);
+          // Xử lý tương tác với tòa nhà nếu cần
+        }} 
+      />
+      
+      {/* 3D Navigation Markers */}
+      <NavigationMarkers />
       
       {/* Các components DevTools */}
       <DevToolsComponents />
@@ -70,9 +80,9 @@ function FarmSceneContent() {
   )
 }
 
-function WorldScene({ currentScene = SceneType.FARM }: { currentScene?: SceneType }) {
-  // Gọi hooks quản lý field interaction cho farm scene
-  useFieldInteraction();
+function WorldScene({ currentScene = SceneType.FARM }: { currentScene?: SceneType }) {  
+  // Gọi hooks quản lý cornfield interaction cho farm scene
+  useCornFieldInteraction();
   
   // Render scene tương ứng dựa trên currentScene
   return (

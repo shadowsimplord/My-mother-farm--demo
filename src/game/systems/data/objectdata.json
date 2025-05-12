@@ -1,0 +1,76 @@
+{
+  "buildings": {
+    "houses": [
+      {
+        "id": "main_house",
+        "type": "farmhouse",
+        "position": [2, -0.5, 3],
+        "rotation": [0, 1.57, 0],
+        "scale": 0.005
+      },
+      {
+        "id": "house_1",
+        "type": "farmhouse",
+        "position": [17, -1, 5],
+        "rotation": [0, 0, 0],
+        "scale": 0.004
+      },
+      {
+        "id": "house_2",
+        "type": "farmhouse",
+        "position": [20, -1, 5],
+        "rotation": [0, 0, 0],
+        "scale": 0.004
+      },
+      {
+        "id": "house_3",
+        "type": "farmhouse",
+        "position": [23, -1, 5],
+        "rotation": [0, 0, 0],
+        "scale": 0.004
+      },
+      {
+        "id": "house_4",
+        "type": "farmhouse",
+        "position": [26, -1, 5],
+        "rotation": [0, 0, 0],
+        "scale": 0.004
+      },
+      {
+        "id": "house_5",
+        "type": "farmhouse",
+        "position": [29, -1, 5],
+        "rotation": [0, 0, 0],
+        "scale": 0.004
+      },
+      {
+        "id": "house_6",
+        "type": "farmhouse",
+        "position": [32, -1, 5],
+        "rotation": [0, 0, 0],
+        "scale": 0.004
+      },
+      {
+        "id": "house_7",
+        "type": "farmhouse",
+        "position": [35, -1, 5],
+        "rotation": [0, 0, 0],
+        "scale": 0.004
+      },
+      {
+        "id": "house_8",
+        "type": "farmhouse",
+        "position": [38, -1, 5],
+        "rotation": [0, 0, 0],
+        "scale": 0.004
+      },
+      {
+        "id": "house_9",
+        "type": "farmhouse",
+        "position": [41, -1, 5],
+        "rotation": [0, 0, 0],
+        "scale": 0.004
+      }
+    ]
+  }
+}
